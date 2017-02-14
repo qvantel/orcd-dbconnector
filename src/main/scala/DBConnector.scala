@@ -13,7 +13,7 @@ object DBConnector {
   def main(args: Array[String]): Unit =
   {
     // Set up logging
-    val logger = Logger("CDRGenerator")
+    val logger = Logger("DBConnector")
 
 
 

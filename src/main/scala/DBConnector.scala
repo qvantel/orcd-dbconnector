@@ -31,28 +31,31 @@ object DBConnector {
 
     val rdd = context.cassandraTable("database", "cdr")
 
-    val s = new Socket(InetAddress.getLocalHost(), 2003)
-    lazy val in = new BufferedSource(s.getInputStream()).getLines()
-    val out = new PrintStream(s.getOutputStream)
+    val graphite_port = 2003
+    val socket = new Socket(InetAddress.getLocalHost(), graphite_port)
+    lazy val in = new BufferedSource(socket.getInputStream()).getLines()
+    val out = new PrintStream(socket.getOutputStream)
 
     var last_update = new DateTime(0)
     while (true) {
-      while (last_update.getMillis()+2000 > DateTime.now(DateTimeZone.UTC).getMillis())
-        Thread.sleep(100)
+      val update_interval = 2000
+      val update_interval_check = 100
+      while (last_update.getMillis() + update_interval > DateTime.now(DateTimeZone.UTC).getMillis())
+        Thread.sleep(update_interval_check)
 
       val last_update_ms = last_update.getMillis() / 1000L
-      println(s"Syncing since $last_update")
+      logger.info(s"Syncing since $last_update")
       rdd.select("ts", "key", "value").where("ts > ?", last_update.toString()).collect().foreach(row => {
         val value = row.getInt("value")
         val ts = (row.getDateTime("ts").getMillis() / 1000L)
 
         val diff = ts-last_update_ms
         logger.debug(s"Sent $value at $ts, $diff")
-        out.println(s"database.cdr.value $value $ts")
+        out.print(s"database.cdr.value $value $ts\n")
       })
       last_update = DateTime.now(DateTimeZone.UTC)
     }
-    s.close()
+    socket.close()
 
     // Close cassandra session
     session.close()

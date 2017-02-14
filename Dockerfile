@@ -1,5 +1,5 @@
 #
-#  REST Backend Alpine Docker Container
+#  DBConnector Alpine Docker Container
 #
 
 FROM alpine:3.4
@@ -27,5 +27,6 @@ RUN set -x \
 
 EXPOSE 8080
 
+# Copy and run DBConnector.jar
 COPY target/scala-2.11/DBConnector.jar /home/DBConnector.jar
 CMD ["java","-jar","/home/DBConnector.jar"]

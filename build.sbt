@@ -15,6 +15,9 @@ libraryDependencies ++= Seq(
   "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.0-M3",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
 
+// This part is required for spark to assemble
+// Why? I don't know, but it works
+// http://stackoverflow.com/a/31618903
 assemblyMergeStrategy in assembly := {
   case PathList("org","aopalliance", xs @ _*) => MergeStrategy.last
   case PathList("javax", "inject", xs @ _*) => MergeStrategy.last

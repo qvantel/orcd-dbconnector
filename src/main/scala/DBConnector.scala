@@ -45,14 +45,14 @@ object DBConnector {
 
       val last_update_ms = last_update.getMillis() / 1000L
       logger.info(s"Syncing since $last_update")
+
+      var payload = ""
       rdd.select("ts", "key", "value").where("ts > ?", last_update.toString()).collect().foreach(row => {
         val value = row.getInt("value")
         val ts = (row.getDateTime("ts").getMillis() / 1000L)
-
-        val diff = ts-last_update_ms
-        logger.debug(s"Sent $value at $ts, $diff")
-        out.print(s"database.cdr.value $value $ts\n")
+        payload += s"database.cdr.value $value $ts\n"
       })
+      out.print(payload)
       last_update = DateTime.now(DateTimeZone.UTC)
     }
     socket.close()

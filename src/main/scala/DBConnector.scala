@@ -40,9 +40,10 @@ object DBConnector {
 
     while (true) {
       // Sleep $update_interval since last_update
-      val sleeptime = last_update.getMillis()+update_interval-DateTime.now(DateTimeZone.UTC).getMillis()
-      if (sleeptime >= 0)
+      val sleeptime = last_update.getMillis() + update_interval - DateTime.now(DateTimeZone.UTC).getMillis()
+      if (sleeptime >= 0) {
         Thread.sleep(sleeptime)
+      }
 
       logger.info(s"Syncing since $last_update")
 

@@ -16,7 +16,6 @@ object DBConnector {
     val logger = Logger("DBConnector")
 
 
-
     // Configure spark->cassandra connection
     val conf = new SparkConf(true)
       .set("spark.cassandra.connection.host", "127.0.0.1")
@@ -37,23 +36,44 @@ object DBConnector {
     val out = new PrintStream(socket.getOutputStream)
 
     var last_update = new DateTime(0)
-    while (true) {
-      val update_interval = 2000
-      val update_interval_check = 100
-      while (last_update.getMillis() + update_interval > DateTime.now(DateTimeZone.UTC).getMillis())
-        Thread.sleep(update_interval_check)
+    val update_interval = 2000
 
-      val last_update_ms = last_update.getMillis() / 1000L
+    while (true) {
+      // Sleep $update_interval since last_update
+      Thread.sleep(last_update.getMillis()+update_interval+DateTime.now(DateTimeZone.UTC).getMillis())
+
       logger.info(s"Syncing since $last_update")
 
       var payload = ""
-      rdd.select("ts", "key", "value").where("ts > ?", last_update.toString()).collect().foreach(row => {
+      var msgcount = 0
+      val batchsize = 250
+      val timelimit = last_update
+      last_update = DateTime.now(DateTimeZone.UTC)
+
+      // Fetch data since last update
+      rdd.select("ts", "key", "value").where("ts > ?", timelimit.toString()).collect().foreach(row => {
+        msgcount += 1
+
+        // Select data
         val value = row.getInt("value")
         val ts = (row.getDateTime("ts").getMillis() / 1000L)
+        // Create carbon entry and append to payload
         payload += s"database.cdr.value $value $ts\n"
+
+        // Send events in batches of 250
+        if (msgcount % batchsize == 0){
+          logger.info(s"Sending $batchsize datapoints to carbon")
+          out.print(payload)
+          payload = ""
+        }
       })
+
+      // Send the last remaining events
+      val events_left = msgcount % batchsize
+      logger.info(s"Sending $events_left datapoints to carbon")
       out.print(payload)
-      last_update = DateTime.now(DateTimeZone.UTC)
+
+      logger.info(s"Sent a total of $msgcount datapoints to carbon this iteration")
     }
     socket.close()
 

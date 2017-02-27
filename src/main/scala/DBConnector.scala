@@ -1,62 +1,53 @@
-import org.apache.spark._
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.cql.CassandraConnector
 import com.typesafe.scalalogging.Logger
 import java.net._
 import java.io._
-import scala.io._
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
+import com.datastax.spark.connector._
 
-object DBConnector {
+import scala.util.{Failure, Success, Try}
 
-  def main(args: Array[String]): Unit =
-  {
-    // Set up logging
-    val logger = Logger("DBConnector")
+object DBConnector extends SparkConnection {
+  // Set up logging
+  val logger = Logger("DBConnector")
 
-
-    // Configure spark->cassandra connection
-    val conf = new SparkConf(true)
-      .set("spark.cassandra.connection.host", "127.0.0.1")
-      .set("spark.cassandra.auth.username", "cassandra")
-      .set("spark.cassandra.auth.password", "cassandra")
-    val context = new SparkContext("local[2]", "database", conf)
-
-    // Setup cassandra connector
-    val connector = CassandraConnector(conf)
-    // Create cassandra session
-    val session = connector.openSession()
-    // Cassandra table context
-    val rdd = context.cassandraTable("database", "cdr")
+  def main(args: Array[String]): Unit = {
 
     // Connection info
     val graphiteIP = "localhost"
     val graphitePort = 2003
     val graphiteAddress = new InetSocketAddress(graphiteIP, graphitePort)
 
-    var lastUpdate = new DateTime(0)
-    val updateInterval = 2000
-    val batchSize = 250
-
     // Create and connect to socket
     val socket = new Socket()
-    try {
+
+    val socketSetup = Try {
       val timeout = 5000
       socket.connect(graphiteAddress, timeout)
     }
-    catch {
-      case se: SocketException => {
-        logger.error("UDP Socket unable to connect")
-        System.exit(1)
-      }
-      case e: Exception => {
-        logger.error("Unknown error occured during UDP socket connection")
-        System.exit(1)
-      }
+
+    socketSetup match {
+      case Success(_) => syncLoop(socket)
+      case Failure(e) => logger.info(e.toString)
     }
+
+    // Close socket
+    socket.close()
+
+    // Close cassandra session
+    session.close()
+  }
+
+  def syncLoop(socket: Socket): Unit = {
+    // Cassandra table context
+    val rdd = context.cassandraTable("database", "cdr")
     // Socket output stream
     val out = new PrintStream(socket.getOutputStream)
+
+    // Update interval and batchSize setup config
+    var lastUpdate = new DateTime(0)
+    val updateInterval = 2000
+    val batchSize = 250
 
     // Syncing loop
     while (true) {
@@ -85,7 +76,7 @@ object DBConnector {
         payload += s"database.cdr.value $value $ts\n"
 
         // Send events in batches of 250
-        if (msgCount % batchSize == 0){
+        if (msgCount % batchSize == 0) {
           logger.info(s"Sending $batchSize datapoints to carbon")
           out.print(payload)
           payload = ""
@@ -99,9 +90,6 @@ object DBConnector {
 
       logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
     }
-    socket.close()
 
-    // Close cassandra session
-    session.close()
   }
 }

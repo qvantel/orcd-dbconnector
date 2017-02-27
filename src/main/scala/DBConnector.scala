@@ -27,35 +27,56 @@ object DBConnector {
     val connector = CassandraConnector(conf)
     // Create cassandra session
     val session = connector.openSession()
-
+    // Cassandra table context
     val rdd = context.cassandraTable("database", "cdr")
 
-    val graphite_port = 2003
-    val socket = new Socket(InetAddress.getLocalHost(), graphite_port)
-    lazy val in = new BufferedSource(socket.getInputStream()).getLines()
+    // Connection info
+    val graphiteIP = "localhost"
+    val graphitePort = 2003
+    val graphiteAddress = new InetSocketAddress(graphiteIP, graphitePort)
+
+    var lastUpdate = new DateTime(0)
+    val updateInterval = 2000
+    val batchSize = 250
+
+    // Create and connect to socket
+    val socket = new Socket()
+    try {
+      val timeout = 5000
+      socket.connect(graphiteAddress, timeout)
+    }
+    catch {
+      case se: SocketException => {
+        logger.error("UDP Socket unable to connect")
+        System.exit(1)
+      }
+      case e: Exception => {
+        logger.error("Unknown error occured during UDP socket connection")
+        System.exit(1)
+      }
+    }
+    // Socket output stream
     val out = new PrintStream(socket.getOutputStream)
 
-    var last_update = new DateTime(0)
-    val update_interval = 2000
-
+    // Syncing loop
     while (true) {
-      // Sleep $update_interval since last_update
-      val sleeptime = last_update.getMillis() + update_interval - DateTime.now(DateTimeZone.UTC).getMillis()
-      if (sleeptime >= 0) {
-        Thread.sleep(sleeptime)
+      // Sleep $updateInterval since lastUpdate
+      val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
+      if (sleepTime >= 0) {
+        Thread.sleep(sleepTime)
       }
 
-      logger.info(s"Syncing since $last_update")
+      logger.info(s"Syncing since $lastUpdate")
 
+      // Reset loop variables
       var payload = ""
-      var msgcount = 0
-      val batchsize = 250
-      val timelimit = last_update
-      last_update = DateTime.now(DateTimeZone.UTC)
+      var msgCount = 0
+      val timeLimit = lastUpdate
+      lastUpdate = DateTime.now(DateTimeZone.UTC)
 
       // Fetch data since last update
-      rdd.select("ts", "key", "value").where("ts > ?", timelimit.toString()).collect().foreach(row => {
-        msgcount += 1
+      rdd.select("ts", "key", "value").where("ts > ?", timeLimit.toString()).collect().foreach(row => {
+        msgCount += 1
 
         // Select data
         val value = row.getInt("value")
@@ -64,19 +85,19 @@ object DBConnector {
         payload += s"database.cdr.value $value $ts\n"
 
         // Send events in batches of 250
-        if (msgcount % batchsize == 0){
-          logger.info(s"Sending $batchsize datapoints to carbon")
+        if (msgCount % batchSize == 0){
+          logger.info(s"Sending $batchSize datapoints to carbon")
           out.print(payload)
           payload = ""
         }
       })
 
       // Send the last remaining events
-      val events_left = msgcount % batchsize
-      logger.info(s"Sending $events_left datapoints to carbon")
+      val eventsLeft = msgCount % batchSize
+      logger.info(s"Sending $eventsLeft datapoints to carbon")
       out.print(payload)
 
-      logger.info(s"Sent a total of $msgcount datapoints to carbon this iteration")
+      logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
     }
     socket.close()
 

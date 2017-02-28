@@ -50,12 +50,13 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
       // Reset loop variables
       var payload = ""
       var msgCount = 0
+      val fetchBatchSize = 10000
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
       rdd.select("created_at", "event_details", "service", "used_service_units")
         .where("created_at > ?", timeLimit.toString()).withAscOrder
-        .limit(50000).collect().foreach(row => {
+        .limit(fetchBatchSize).collect().foreach(row => {
 
         msgCount += 1
 

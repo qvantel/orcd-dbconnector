@@ -21,8 +21,9 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
   def append(destination: String, value: String, timestamp: DateTime): Unit = {
     val timestampstr = (timestamp.getMillis() / 1000L).toString()
     messageQueue += s"$destination $value $timestampstr"
-    if (messageQueue.size >= batchSize)
+    if (messageQueue.size >= batchSize) {
       dispatch()
+    }
   }
 
   def dispatch(): Unit ={
@@ -31,7 +32,7 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
 
     // Log and count messages sent
     messagesSent += messageQueue.length
-    logger.info("Sending "+messageQueue.length+s" datapoints to carbon, have now sent a total of $messagesSent")
+    logger.info("Sending " + messageQueue.length + s" datapoints to carbon, have now sent a total of $messagesSent")
 
     // Prepare payload
     var payload = ""

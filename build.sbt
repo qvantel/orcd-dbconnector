@@ -7,12 +7,21 @@ scalaVersion := "2.11.8"
 assemblyJarName in assembly := "DBConnector.jar"
 mainClass in assembly := Some("DBConnector")
 
+lazy val execScript = taskKey[Unit]("Download mcc library")
+
+execScript := {
+  import sys.process._
+  Seq("./get_latest_mcc_table.bash") !
+}
+
 resolvers += "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven"
 
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.1.0" % "compile",
   "org.apache.spark" %% "spark-sql" % "2.1.0" % "compile",
   "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.0-M3",
+  "org.json4s" %% "json4s-native" % "3.5.0",
+  "com.typesafe" % "config" % "1.3.1",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
 
 // This part is required for spark to assemble

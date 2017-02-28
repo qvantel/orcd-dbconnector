@@ -1,54 +1,42 @@
-import com.typesafe.scalalogging.Logger
-import java.net._
-import java.io._
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import com.datastax.spark.connector._
+import property.CountryCodes
+import property.Logger
 
-import scala.util.{Failure, Success, Try}
-
-object DBConnector extends SparkConnection {
-  // Set up logging
-  val logger = Logger("DBConnector")
-
+object DBConnector extends SparkConnection with CountryCodes with Logger {
   def main(args: Array[String]): Unit = {
 
-    // Connection info
+    //
+    getCountriesByMcc()
+
+    // Graphite connection info
     val graphiteIP = "localhost"
     val graphitePort = 2003
-    val graphiteAddress = new InetSocketAddress(graphiteIP, graphitePort)
 
-    // Create and connect to socket
-    val socket = new Socket()
+    // Create dispatcher
+    val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
+    dispatcher.connect()
 
-    val socketSetup = Try {
-      val timeout = 5000
-      socket.connect(graphiteAddress, timeout)
-    }
+    syncLoop(dispatcher)
 
-    socketSetup match {
-      case Success(_) => syncLoop(socket)
-      case Failure(e) => logger.info(e.toString)
-    }
-
-    // Close socket
-    socket.close()
+    // Close UDP Connection
+    dispatcher.close()
 
     // Close cassandra session
     session.close()
   }
 
-  def syncLoop(socket: Socket): Unit = {
+  def syncLoop(dispatcher: DatapointDispatcher): Unit = {
     // Cassandra table context
-    val rdd = context.cassandraTable("database", "cdr")
-    // Socket output stream
-    val out = new PrintStream(socket.getOutputStream)
+    val rdd = context.cassandraTable("qvantel", "call")
 
     // Update interval and batchSize setup config
     var lastUpdate = new DateTime(0)
     val updateInterval = 2000
     val batchSize = 250
 
+    logger.info("Entering sync loop")
     // Syncing loop
     while (true) {
       // Sleep $updateInterval since lastUpdate
@@ -65,31 +53,37 @@ object DBConnector extends SparkConnection {
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
-      // Fetch data since last update
-      rdd.select("ts", "key", "value").where("ts > ?", timeLimit.toString()).collect().foreach(row => {
+      rdd.select("created_at", "event_details", "service", "used_service_units")
+        .where("created_at > ?", timeLimit.toString()).withAscOrder
+        .limit(50000).collect().foreach(row => {
+
         msgCount += 1
 
-        // Select data
-        val value = row.getInt("value")
-        val ts = (row.getDateTime("ts").getMillis() / 1000L)
-        // Create carbon entry and append to payload
-        payload += s"database.cdr.value $value $ts\n"
+        // Select service
+        val service : String = row.getString("service")
 
-        // Send events in batches of 250
-        if (msgCount % batchSize == 0) {
-          logger.info(s"Sending $batchSize datapoints to carbon")
-          out.print(payload)
-          payload = ""
-        }
+        // Select created_at timestamp
+        val timeStamp = row.getDateTime("created_at")
+
+        // Select event_details
+        val eventDetails: UDTValue = row.getUDTValue("event_details")
+
+        // Select a_party country
+        val APartyLocation: UDTValue = eventDetails.getUDTValue("a_party_location")
+        val destination: String = APartyLocation.getString("destination")
+        val countryCode : String = destination.substring(0, 3) // Get MCC country code
+        val countryISO : String = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+
+        // Select used_service_units
+        val usedServiceUnits : UDTValue = row.getUDTValue("used_service_units")
+        val amount : Int = usedServiceUnits.getInt("amount")
+
+        // Add datapoint to dispatcher
+        dispatcher.append(s"qvantel.$service.destination.$countryISO", amount.toString, timeStamp)
+        lastUpdate = timeStamp
       })
-
-      // Send the last remaining events
-      val eventsLeft = msgCount % batchSize
-      logger.info(s"Sending $eventsLeft datapoints to carbon")
-      out.print(payload)
-
+      dispatcher.dispatch()
       logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
     }
-
   }
 }

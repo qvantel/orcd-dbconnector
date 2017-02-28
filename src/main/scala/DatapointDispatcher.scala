@@ -1,8 +1,12 @@
 import java.net._
 import java.io._
+
 import org.joda.time.DateTime
+
 import scala.collection.mutable.Queue
 import property.Logger
+
+import scala.util.Try
 
 class DatapointDispatcher(ip: String, port: Int) extends Logger {
 
@@ -13,9 +17,9 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
   var messagesSent = 0
   var messageQueue = new Queue[String]
 
-  def connect(): Unit = {
+  def connect(): Try[Unit] = {
     val timeout = 5000
-    socket.connect(graphiteAddress, timeout)
+    Try(socket.connect(graphiteAddress, timeout))
   }
 
   def append(destination: String, value: String, timestamp: DateTime): Unit = {

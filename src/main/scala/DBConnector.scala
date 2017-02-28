@@ -5,6 +5,8 @@ import property.CountryCodes
 import property.Logger
 import scala.util.{Try, Success, Failure}
 
+import scala.util.{Failure, Success}
+
 object DBConnector extends SparkConnection with CountryCodes with Logger {
   def main(args: Array[String]): Unit = {
 
@@ -17,12 +19,18 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
     // Create dispatcher
     val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
-    dispatcher.connect()
 
-    syncLoop(dispatcher)
+    // Attempt Connection to Carbon
+    dispatcher.connect() match {
+      case Success(_) => syncLoop(dispatcher)
+      case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
+    }
 
     // Close UDP Connection
     dispatcher.close()
+
+    // Stop SparkContext
+    context.stop()
 
     // Close cassandra session
     session.close()

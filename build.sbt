@@ -14,6 +14,8 @@ execScript := {
   Seq("./get_latest_mcc_table.bash") !
 }
 
+compile in Compile <<= (compile in Compile).dependsOn(execScript)
+
 resolvers += "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven"
 
 libraryDependencies ++= Seq(
@@ -22,6 +24,8 @@ libraryDependencies ++= Seq(
   "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.0-M3",
   "org.json4s" %% "json4s-native" % "3.5.0",
   "com.typesafe" % "config" % "1.3.1",
+  "org.scala-lang.modules" %% "scala-xml" % "1.0-RC3",
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0-RC1",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
 
 // This part is required for spark to assemble

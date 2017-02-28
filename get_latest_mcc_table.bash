@@ -2,14 +2,23 @@
 function eexit {
 	echo "$1" && exit 1
 }
-which wget > /dev/null || eexit "wget not installed"
-which sha1sum > /dev/null || eexit "sha1sum not installed"
 
-wget -N https://raw.githubusercontent.com/musalbas/mcc-mnc-table/master/mcc-mnc-table.json -O temp.json
+which wget > /dev/null || eexit "ERROR: wget not installed"
 
-# Get checksums
-t=$(sha1sum temp.json 2>/dev/null | awk '{print $1;}')
-j=$(sha1sum mcc-mnc-table.json 2>/dev/null | awk '{print $1;}')
+if [ ! -f "mcc-mnc-table.json" ]
+then
+  echo "Downloading mcc table"
+  wget http://raw.githubusercontent.com/musalbas/mcc-mnc-table/master/mcc-mnc-table.json
+fi
 
-# replace if different
-[ t != j ] && mv temp.json mcc-mnc-table.json || rm temp.json
+if [ ! -f "src/main/resources/mcc-mnc-table.json" ]
+then
+  echo "Copying mcc table to main/resources/"
+  cp mcc-mnc-table.json src/main/resources/
+fi
+
+if [ ! -f "src/test/resources/mcc-mnc-table.json" ]
+then
+  echo "Copying mcc table to test/resources/"
+  cp mcc-mnc-table.json src/test/resources/
+fi

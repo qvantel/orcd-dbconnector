@@ -4,6 +4,7 @@ import model.Country
 import org.json4s.{DefaultFormats, _}
 import org.json4s.native.JsonMethods._
 import scala.collection.mutable.HashMap
+import java.io.{InputStream}
 
 trait CountryCodes extends Config {
   val countriesFile = config.getString("gen.countries.file")
@@ -11,11 +12,8 @@ trait CountryCodes extends Config {
 
   def getCountriesByMcc(): Unit = {
     // Open a source file
-    val source = scala.io.Source.fromFile(countriesFile)
-
-    // Try to read mcc-table, using the Country-model
-    // Read from the opened file
-    val lines = source.mkString
+    val source : InputStream = getClass.getResourceAsStream(countriesFile)
+    val lines = scala.io.Source.fromInputStream( source ).mkString
 
     // For json4s, specify parse format
     implicit val format = DefaultFormats

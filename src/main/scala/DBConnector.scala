@@ -3,6 +3,7 @@ import org.joda.time.DateTimeZone
 import com.datastax.spark.connector._
 import property.CountryCodes
 import property.Logger
+import scala.util.{Try, Success, Failure}
 
 object DBConnector extends SparkConnection with CountryCodes with Logger {
   def main(args: Array[String]): Unit = {
@@ -54,37 +55,45 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
-      rdd.select("created_at", "event_details", "service", "used_service_units")
-        .where("created_at > ?", timeLimit.toString()).withAscOrder
-        .limit(fetchBatchSize).collect().foreach(row => {
+      val select = Try {
+        rdd.select("created_at", "event_details", "service", "used_service_units")
+          .where("created_at > ?", timeLimit.toString()).withAscOrder
+          .limit(fetchBatchSize).collect().foreach(row => {
 
-        msgCount += 1
+          msgCount += 1
 
-        // Select service
-        val service : String = row.getString("service")
+          // Select service
+          val service: String = row.getString("service")
 
-        // Select created_at timestamp
-        val timeStamp = row.getDateTime("created_at")
+          // Select created_at timestamp
+          val timeStamp = row.getDateTime("created_at")
 
-        // Select event_details
-        val eventDetails: UDTValue = row.getUDTValue("event_details")
+          // Select event_details
+          val eventDetails = row.getUDTValue("event_details")
 
-        // Select a_party country
-        val APartyLocation: UDTValue = eventDetails.getUDTValue("a_party_location")
-        val destination: String = APartyLocation.getString("destination")
-        val countryCode : String = destination.substring(0, 3) // Get MCC country code
-        val countryISO : String = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+          // Select a_party country
+          val APartyLocation = eventDetails.getUDTValue("a_party_location")
+          val destination = APartyLocation.getString("destination")
+          val countryCode = destination.substring(0, 3)
+          // Get MCC country code
+          val countryISO = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
-        // Select used_service_units
-        val usedServiceUnits : UDTValue = row.getUDTValue("used_service_units")
-        val amount : Int = usedServiceUnits.getInt("amount")
+          // Select used_service_units
+          val usedServiceUnits = row.getUDTValue("used_service_units")
+          val amount = usedServiceUnits.getInt("amount")
 
-        // Add datapoint to dispatcher
-        dispatcher.append(s"qvantel.$service.destination.$countryISO", amount.toString, timeStamp)
-        lastUpdate = timeStamp
-      })
-      dispatcher.dispatch()
-      logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
+          // Add datapoint to dispatcher
+          dispatcher.append(s"qvantel.cdr.$service.destination.$countryISO", amount.toString, timeStamp)
+          lastUpdate = timeStamp
+        })
+        dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
+        dispatcher.dispatch()
+        logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
+      }
+      select match {
+        case Success(e) => true
+        case Failure(e) => e.printStackTrace()
+      }
     }
   }
 }

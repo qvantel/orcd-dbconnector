@@ -26,7 +26,7 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
     }
   }
 
-  def dispatch(): Unit ={
+  def dispatch(): Unit = {
     // Socket output stream
     val out = new PrintStream(socket.getOutputStream)
 
@@ -44,7 +44,5 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
     out.print(payload)
   }
 
-  def close(): Unit ={
-    socket.close()
-  }
+  def close(): Unit = socket.close()
 }

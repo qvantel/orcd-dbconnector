@@ -1,13 +1,16 @@
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import com.datastax.spark.connector._
+import com.sun.jmx.snmp.Timestamp
 import property.CountryCodes
 import property.Logger
-import scala.util.{Try, Success, Failure}
 
+import scala.util.{Failure, Success, Try}
 import scala.util.{Failure, Success}
 
+case class Model(id: Int, ts: DateTime)
 object DBConnector extends SparkConnection with CountryCodes with Logger {
+
   def main(args: Array[String]): Unit = {
 
     //
@@ -16,6 +19,12 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
     // Graphite connection info
     val graphiteIP = "localhost"
     val graphitePort = 2003
+
+    // variable for the latest sync time
+    var latestSyncDate: Long = 0
+
+    var syncRdd = context.cassandraTable("qvantel", "latestsync")
+
 
     // Create dispatcher
     val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
@@ -37,11 +46,28 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
   }
 
   def syncLoop(dispatcher: DatapointDispatcher): Unit = {
+
+    var latestSyncDate: Long = 0
+    var syncRdd = context.cassandraTable("qvantel", "latestsync")
+    //println(syncRdd.first())
+
+    // latest sync time
+    if(syncRdd.count() > 0) {
+      syncRdd.select("id", "ts")
+        .where("id = ?", 1)
+        .collect()
+        .foreach(row => {
+          // assign the timestamp
+          latestSyncDate = row.getLong("ts")
+        })
+    }
+
     // Cassandra table context
     val rdd = context.cassandraTable("qvantel", "call")
 
+
     // Update interval and batchSize setup config
-    var lastUpdate = new DateTime(0)
+    var lastUpdate = new DateTime(latestSyncDate)
     val updateInterval = 2000
     val batchSize = 250
 
@@ -57,7 +83,6 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
       logger.info(s"Syncing since $lastUpdate")
 
       // Reset loop variables
-      var payload = ""
       var msgCount = 0
       val fetchBatchSize = 10000
       val timeLimit = lastUpdate
@@ -79,6 +104,7 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           // Select event_details
           val eventDetails = row.getUDTValue("event_details")
 
+
           // Select a_party country
           val APartyLocation = eventDetails.getUDTValue("a_party_location")
           val destination = APartyLocation.getString("destination")
@@ -93,10 +119,20 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           // Add datapoint to dispatcher
           dispatcher.append(s"qvantel.cdr.$service.destination.$countryISO", amount.toString, timeStamp)
           lastUpdate = timeStamp
+
+
         })
         dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
         dispatcher.dispatch()
         logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
+
+        // Insert current time stamp for syncing here.
+        // Insert timestamp always on id=1 to only have one record of a timestamp.
+
+        val date = DateTime.now()
+        val collection = context.parallelize(Seq(Model(1,date)))
+        collection.saveToCassandra("qvantel", "latestsync", SomeColumns("id","ts"))
+
       }
       select match {
         case Success(e) => true

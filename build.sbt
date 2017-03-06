@@ -24,7 +24,6 @@ libraryDependencies ++= Seq(
   "com.datastax.spark" %% "spark-cassandra-connector" % "2.0.0-M3",
   "org.json4s" %% "json4s-native" % "3.5.0",
   "com.typesafe" % "config" % "1.3.1",
-  "org.scala-lang" % "scala-xml" % "2.11.0-M4",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
 

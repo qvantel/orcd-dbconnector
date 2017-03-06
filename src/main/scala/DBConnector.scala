@@ -128,7 +128,6 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
         // Insert current time stamp for syncing here.
         // Insert timestamp always on id=1 to only have one record of a timestamp.
-
         val date = DateTime.now()
         val collection = context.parallelize(Seq(Model(1,date)))
         collection.saveToCassandra("qvantel", "latestsync", SomeColumns("id","ts"))

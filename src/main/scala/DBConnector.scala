@@ -7,10 +7,12 @@ import property.Logger
 import scala.util.{Failure, Success, Try}
 
 case class Model(id: Int, ts: DateTime)
+
 object DBConnector extends SparkConnection with CountryCodes with Logger {
 
   def main(args: Array[String]): Unit = {
 
+    // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 
     val graphiteIP = "localhost"
@@ -76,7 +78,6 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           val aPartyLocation = eventDetails.getUDTValue("a_party_location")
           val destination = aPartyLocation.getString("destination")
           val countryCode = destination.substring(0, 3)
-          // Get MCC country code
           val countryISO = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Select used_service_units

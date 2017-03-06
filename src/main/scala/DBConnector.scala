@@ -1,12 +1,10 @@
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import com.datastax.spark.connector._
-import com.sun.jmx.snmp.Timestamp
 import property.CountryCodes
 import property.Logger
 
 import scala.util.{Failure, Success, Try}
-import scala.util.{Failure, Success}
 
 case class Model(id: Int, ts: DateTime)
 object DBConnector extends SparkConnection with CountryCodes with Logger {
@@ -49,7 +47,6 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
     var latestSyncDate: Long = 0
     var syncRdd = context.cassandraTable("qvantel", "latestsync")
-    //println(syncRdd.first())
 
     // latest sync time
     if(syncRdd.count() > 0) {

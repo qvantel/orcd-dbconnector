@@ -13,4 +13,7 @@ trait SparkConnection {
   val connector = CassandraConnector(conf)
   // Create cassandra session
   val session = connector.openSession()
+
+  // create new table for the time sync if not exists
+  session.execute("CREATE TABLE IF NOT EXISTS qvantel.latestsync(id INT PRIMARY KEY, ts timestamp)")
 }

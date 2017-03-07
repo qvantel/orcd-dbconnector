@@ -70,7 +70,7 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
           msgCount += 1
 
-          val service  = row.getString("service")
+          val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
           val eventDetails = row.getUDTValue("event_details")
 
@@ -87,24 +87,22 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           // Add datapoint to dispatcher
           dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
           lastUpdate = timeStamp
+        })}
 
+        select match {
+          case Success(_) => processSelect(msgCount)
+          case Failure(e) => e.printStackTrace()
+        }
 
-        })
-        dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
-        dispatcher.dispatch()
-        logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
-
-        // Insert current time stamp for syncing here.
-        // Insert timestamp always on id=1 to only have one record of a timestamp.
-        val date = DateTime.now()
-        val collection = context.parallelize(Seq(Model(1,date)))
-        collection.saveToCassandra("qvantel", "latestsync", SomeColumns("id","ts"))
-
-      }
-      select match {
-        case Success(e) => None
-        case Failure(e) => e.printStackTrace()
-      }
+        def processSelect(total: Int): Unit = total match {
+          case 0 => logger.info("Was not able to fetch any new rows from Cassandra")
+          case _ => {
+            dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
+            dispatcher.dispatch()
+            logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
+            updateLatestSync()
+          }
+        }
     }
   }
 
@@ -116,6 +114,14 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
     } else {
       0 // sync time will be set to POSIX time
     }
+  }
+
+  def updateLatestSync(): Unit = {
+    // Insert current time stamp for syncing here.
+    // Insert timestamp always on id=1 to only have one record of a timestamp.
+    val date = DateTime.now()
+    val collection = context.parallelize(Seq(Model(1,date)))
+    collection.saveToCassandra("qvantel", "latestsync", SomeColumns("id","ts"))
   }
 
 }

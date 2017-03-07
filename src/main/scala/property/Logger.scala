@@ -1,7 +1,6 @@
 package property
 
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
 
 trait Logger {
-  val logger = ScalaLogger("DBConnector")
+  val logger = com.typesafe.scalalogging.Logger("DBConnector")
 }

@@ -39,7 +39,8 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
   def syncLoop(dispatcher: DatapointDispatcher): Unit = {
 
     val latestSyncDate = getLatestSyncDate()
-    val rdd = context.cassandraTable("qvantel", "call")
+    val c_rdd = context.cassandraTable("qvantel", "call")
+    val p_rdd = context.cassandraTable("qvantel", "product")
 
     // Update interval and batchSize setup config
     var lastUpdate = new DateTime(latestSyncDate)
@@ -64,7 +65,7 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
       val select = Try {
-        rdd.select("created_at", "event_details", "service", "used_service_units")
+        c_rdd.select("created_at", "event_details", "service", "used_service_units")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
@@ -88,10 +89,25 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
           lastUpdate = timeStamp
 
+        })
+
+        p_rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
+          .where("created_at > ?", timeLimit.toString()).withAscOrder
+          .limit(fetchBatchSize).collect().foreach(row => {
+
+          msgCount += 1
+
+          val timeStamp = row.getDateTime("created_at")
+          val eventCharges = row.getUDTValue("event_charges")
+          val product = eventCharges.getString("product")
+
+          dispatcher.append(s"qvantel.product.$product", "100", timeStamp)
+          lastUpdate = timeStamp
 
         })
-        dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
+
         dispatcher.dispatch()
+        dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
         logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
 
         // Insert current time stamp for syncing here.

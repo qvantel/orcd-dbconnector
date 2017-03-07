@@ -7,24 +7,17 @@ import property.Logger
 import scala.util.{Failure, Success, Try}
 
 case class Model(id: Int, ts: DateTime)
+
 object DBConnector extends SparkConnection with CountryCodes with Logger {
 
   def main(args: Array[String]): Unit = {
 
-    //
+    // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 
-    // Graphite connection info
     val graphiteIP = "localhost"
     val graphitePort = 2003
 
-    // variable for the latest sync time
-    var latestSyncDate: Long = 0
-
-    var syncRdd = context.cassandraTable("qvantel", "latestsync")
-
-
-    // Create dispatcher
     val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
 
     // Attempt Connection to Carbon
@@ -45,28 +38,14 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
   def syncLoop(dispatcher: DatapointDispatcher): Unit = {
 
-    var latestSyncDate: Long = 0
-    var syncRdd = context.cassandraTable("qvantel", "latestsync")
-
-    // latest sync time
-    if(syncRdd.count() > 0) {
-      syncRdd.select("id", "ts")
-        .where("id = ?", 1)
-        .collect()
-        .foreach(row => {
-          // assign the timestamp
-          latestSyncDate = row.getLong("ts")
-        })
-    }
-
-    // Cassandra table context
+    val latestSyncDate = getLatestSyncDate()
     val rdd = context.cassandraTable("qvantel", "call")
-
 
     // Update interval and batchSize setup config
     var lastUpdate = new DateTime(latestSyncDate)
     val updateInterval = 2000
     val batchSize = 250
+    val fetchBatchSize = 10000
 
     logger.info("Entering sync loop")
     // Syncing loop
@@ -81,7 +60,6 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
       // Reset loop variables
       var msgCount = 0
-      val fetchBatchSize = 10000
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
@@ -92,21 +70,14 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
           msgCount += 1
 
-          // Select service
-          val service: String = row.getString("service")
-
-          // Select created_at timestamp
+          val service  = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
-
-          // Select event_details
           val eventDetails = row.getUDTValue("event_details")
 
-
           // Select a_party country
-          val APartyLocation = eventDetails.getUDTValue("a_party_location")
-          val destination = APartyLocation.getString("destination")
+          val aPartyLocation = eventDetails.getUDTValue("a_party_location")
+          val destination = aPartyLocation.getString("destination")
           val countryCode = destination.substring(0, 3)
-          // Get MCC country code
           val countryISO = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Select used_service_units
@@ -131,9 +102,20 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
       }
       select match {
-        case Success(e) => true
+        case Success(e) => None
         case Failure(e) => e.printStackTrace()
       }
     }
   }
+
+  def getLatestSyncDate(): Long = {
+    val syncRdd = context.cassandraTable("qvantel", "latestsync")
+
+    if (syncRdd.count() > 0) {
+      syncRdd.first().get[Long]("ts")
+    } else {
+      0 // sync time will be set to POSIX time
+    }
+  }
+
 }

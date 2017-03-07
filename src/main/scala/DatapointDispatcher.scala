@@ -1,8 +1,6 @@
 import java.net._
 import java.io._
-
 import org.joda.time.DateTime
-
 import scala.collection.mutable.Queue
 import property.Logger
 

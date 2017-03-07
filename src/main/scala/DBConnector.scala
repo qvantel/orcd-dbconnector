@@ -114,7 +114,7 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           val amount = usedServiceUnits.getInt("amount")
 
           // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.cdr.$service.destination.$countryISO", amount.toString, timeStamp)
+          dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
           lastUpdate = timeStamp
 
 

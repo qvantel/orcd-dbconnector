@@ -108,8 +108,8 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
         })
 
-        dispatcher.dispatch()
         dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
+        dispatcher.dispatch()
         logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
 
         // Insert current time stamp for syncing here.

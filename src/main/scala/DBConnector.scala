@@ -4,7 +4,7 @@ import com.datastax.spark.connector._
 import property.CountryCodes
 import property.Logger
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Random, Success, Try}
 
 case class Model(id: Int, ts: DateTime)
 
@@ -99,9 +99,11 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
 
           val timeStamp = row.getDateTime("created_at")
           val eventCharges = row.getUDTValue("event_charges")
-          val product = eventCharges.getString("product")
+          val product = eventCharges.getUDTValue("product")
+          val productName = product.getString("name").replaceAll("\\s+", "")
 
-          dispatcher.append(s"qvantel.product.$product", "100", timeStamp)
+          val magicnumber = 1000
+          dispatcher.append(s"qvantel.product.$productName", Random.nextInt(magicnumber).toString, timeStamp)
           lastUpdate = timeStamp
 
         })

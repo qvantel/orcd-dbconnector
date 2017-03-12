@@ -1,14 +1,18 @@
 import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import com.datastax.spark.connector._
-import property.CountryCodes
-import property.Logger
+import com.datastax.spark.connector.rdd.CassandraTableScanRDD
+import property.{CountryCodes, Logger, Processing}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Random, Success, Try}
 
-case class Model(id: Int, ts: DateTime)
+case class SyncModel(id: Int, ts: DateTime)
 
-object DBConnector extends SparkConnection with CountryCodes with Logger {
+object DBConnector extends SparkConnection
+  with CountryCodes with Logger with Processing {
 
   def main(args: Array[String]): Unit = {
 
@@ -37,19 +41,20 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
   }
 
   def syncLoop(dispatcher: DatapointDispatcher): Unit = {
+    logger.info("Starting processing of CALLS and PRODUCTS")
+    val f1 = Future(callProcessing(dispatcher))
+    val f2 = Future(productProcessing(dispatcher))
+   // Waiting for just one Future as there is no point running if either product or call fails
+    Await.result(f1, Duration.Inf)
+  }
 
-    val latestSyncDate = getLatestSyncDate()
-    val c_rdd = context.cassandraTable("qvantel", "call")
-    val p_rdd = context.cassandraTable("qvantel", "product")
+  def callProcessing(dispatcher: DatapointDispatcher): Unit = {
+    val rdd = context.cassandraTable("qvantel", "call")
+    val callSync = context.cassandraTable("qvantel", "callsync")
+    val latestSyncDate = getLatestSyncDate(callSync)
 
-    // Update interval and batchSize setup config
     var lastUpdate = new DateTime(latestSyncDate)
-    val updateInterval = 2000
-    val batchSize = 250
-    val fetchBatchSize = 10000
 
-    logger.info("Entering sync loop")
-    // Syncing loop
     while (true) {
       // Sleep $updateInterval since lastUpdate
       val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
@@ -57,21 +62,21 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
         Thread.sleep(sleepTime)
       }
 
-      logger.info(s"Syncing since $lastUpdate")
+      logger.info(s"Syncing CALLS since $lastUpdate")
 
       // Reset loop variables
       var msgCount = 0
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
-      val select = Try {
-        c_rdd.select("created_at", "event_details", "service", "used_service_units")
+      val callFetch = Try {
+        rdd.select("created_at", "event_details", "service", "used_service_units")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
           msgCount += 1
 
-          val service  = row.getString("service")
+          val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
           val eventDetails = row.getUDTValue("event_details")
 
@@ -88,10 +93,44 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           // Add datapoint to dispatcher
           dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
           lastUpdate = timeStamp
-
         })
+      }
 
-        p_rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
+      callFetch match {
+        case Success(_) if msgCount > 0  => {
+          commitBatch(dispatcher, msgCount)
+          updateLatestSync("callsync")
+        }
+        case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CALL row from Cassandra")
+        case Failure(e) => e.printStackTrace()
+      }
+
+    }
+  }
+
+  def productProcessing(dispatcher: DatapointDispatcher): Unit = {
+    val rdd = context.cassandraTable("qvantel", "product")
+    val productSync = context.cassandraTable("qvantel", "productsync")
+    val latestSyncDate = getLatestSyncDate(productSync)
+
+    var lastUpdate = new DateTime(latestSyncDate)
+
+    while (true) {
+      // Sleep $updateInterval since lastUpdate
+      val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
+      if (sleepTime >= 0) {
+        Thread.sleep(sleepTime)
+      }
+
+      logger.info(s"Syncing PRODUCT since $lastUpdate")
+
+      // Reset loop variables
+      var msgCount = 0
+      val timeLimit = lastUpdate
+      lastUpdate = DateTime.now(DateTimeZone.UTC)
+
+      val productFetch = Try {
+        rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
@@ -105,35 +144,41 @@ object DBConnector extends SparkConnection with CountryCodes with Logger {
           val magicnumber = 1000
           dispatcher.append(s"qvantel.product.$productName", Random.nextInt(magicnumber).toString, timeStamp)
           lastUpdate = timeStamp
-
         })
-
-        dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
-        dispatcher.dispatch()
-        logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
-
-        // Insert current time stamp for syncing here.
-        // Insert timestamp always on id=1 to only have one record of a timestamp.
-        val date = DateTime.now()
-        val collection = context.parallelize(Seq(Model(1,date)))
-        collection.saveToCassandra("qvantel", "latestsync", SomeColumns("id","ts"))
-
       }
-      select match {
-        case Success(e) => None
+
+      productFetch match {
+        case Success(_) if msgCount > 0 => {
+          commitBatch(dispatcher, msgCount)
+          updateLatestSync("productsync")
+        }
+        case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
         case Failure(e) => e.printStackTrace()
       }
+
     }
   }
 
-  def getLatestSyncDate(): Long = {
-    val syncRdd = context.cassandraTable("qvantel", "latestsync")
+  def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int): Unit = {
+    dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
+    dispatcher.dispatch()
+    logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
+  }
 
-    if (syncRdd.count() > 0) {
-      syncRdd.first().get[Long]("ts")
+  def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
+    if (rdd.count() > 0) {
+      rdd.first().get[Long]("ts")
     } else {
       0 // sync time will be set to POSIX time
     }
+  }
+
+  def updateLatestSync(tableName: String): Unit = {
+    // Insert current time stamp for syncing here.
+    // Insert timestamp always on id=1 to only have one record of a timestamp.
+    val date = DateTime.now()
+    val collection = context.parallelize(Seq(SyncModel(1,date)))
+    collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
   }
 
 }

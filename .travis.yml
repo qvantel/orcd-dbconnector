@@ -9,6 +9,7 @@ script:
  - sbt -jvm-opts travis/jvmopts.compile assembly
  - sbt -jvm-opts travis/jvmopts.test test
  - sbt -jvm-opts travis/jvmopts.test scalastyle
+ - rm -r target/
 
 cache:
   directories:

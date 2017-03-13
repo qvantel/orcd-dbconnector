@@ -5,7 +5,7 @@ version := "1.0"
 scalaVersion := "2.11.8"
 
 assemblyJarName in assembly := "DBConnector.jar"
-mainClass in assembly := Some("DBConnector")
+mainClass in assembly := Some("se.qvantel.connector.DBConnector")
 
 lazy val execScript = taskKey[Unit]("Download mcc library")
 

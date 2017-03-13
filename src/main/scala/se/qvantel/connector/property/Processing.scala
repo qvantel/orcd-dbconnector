@@ -1,4 +1,4 @@
-package property
+package se.qvantel.connector.property
 
 
 trait Processing extends Config {

@@ -22,3 +22,6 @@ then
   echo "Copying mcc table to test/resources/"
   cp mcc-mnc-table.json src/test/resources/
 fi
+
+test -f "src/test/resources/mcc-mnc-table.json" && echo "Test/res/mcc table exists" || exit 1
+test -f "src/main/resources/mcc-mnc-table.json" && echo "Main/res/mcc table exists" || exit 1

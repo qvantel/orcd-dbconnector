@@ -1,9 +1,12 @@
-import java.net._
+package se.qvantel.connector
+
 import java.io._
+import java.net._
+
 import org.joda.time.DateTime
-import scala.collection.mutable.Queue
 import property.Logger
 
+import scala.collection.mutable.Queue
 import scala.util.Try
 
 class DatapointDispatcher(ip: String, port: Int) extends Logger {

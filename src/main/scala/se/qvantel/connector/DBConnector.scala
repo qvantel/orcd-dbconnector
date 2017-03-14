@@ -1,7 +1,9 @@
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
+package se.qvantel.connector
+
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.{CassandraRow, SomeColumns}
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
+import org.joda.time.{DateTime, DateTimeZone}
 import property.{CountryCodes, Logger, Processing}
 
 import scala.concurrent.ExecutionContext.Implicits.global

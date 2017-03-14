@@ -1,6 +1,6 @@
-package property
+package se.qvantel.connector.property
 
-import model.Country
+import se.qvantel.connector.model.Country
 import org.json4s.{DefaultFormats, _}
 import org.json4s.native.JsonMethods._
 import scala.collection.mutable.HashMap

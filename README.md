@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/flygare/QvantelDBConnector.svg?token=B6YLB31LLNNKsSzKXpCe&branch=master)](https://travis-ci.com/flygare/QvantelDBConnector)
+
 # DBConnector 
 
 Run just tests:

@@ -138,7 +138,7 @@ object DBConnector extends SparkConnection
         rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
-          
+
           msgCount += 1
 
           val timeStamp = row.getDateTime("created_at")

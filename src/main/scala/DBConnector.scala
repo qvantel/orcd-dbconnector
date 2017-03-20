@@ -85,13 +85,16 @@ object DBConnector extends SparkConnection
           val destination = aPartyLocation.getString("destination")
           val countryCode = destination.substring(0, 3)
           val countryISO = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+          val isRoaming = eventDetails.getBoolean("is_roaming")
 
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
           val amount = usedServiceUnits.getInt("amount")
 
           // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
+          if(isRoaming){
+            dispatcher.append(s"qvantel.call.$service.destination.$countryISO.$isRoaming", amount.toString, timeStamp)
+          }
           lastUpdate = timeStamp
         })
       }
@@ -133,7 +136,6 @@ object DBConnector extends SparkConnection
         rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
-
           msgCount += 1
 
           val timeStamp = row.getDateTime("created_at")

@@ -20,3 +20,4 @@ cache:
 after_success:
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+  - test $TRAVIS_BRANCH = "master" && ./trigger_core_repo_build.sh

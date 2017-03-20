@@ -5,7 +5,7 @@ version := "1.0"
 scalaVersion := "2.11.8"
 
 assemblyJarName in assembly := "DBConnector.jar"
-mainClass in assembly := Some("DBConnector")
+mainClass in assembly := Some("se.qvantel.connector.DBConnector")
 
 lazy val execScript = taskKey[Unit]("Download mcc library")
 
@@ -15,7 +15,7 @@ execScript := {
 }
 
 compile in Compile <<= (compile in Compile).dependsOn(execScript)
-
+logLevel in assembly := Level.Error
 resolvers += "Spark Packages Repo" at "https://dl.bintray.com/spark-packages/maven"
 
 libraryDependencies ++= Seq(
@@ -25,7 +25,8 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-native" % "3.5.0",
   "com.typesafe" % "config" % "1.3.1",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
+)
 
 // This part is required for spark to assemble
 // Why? I don't know, but it works

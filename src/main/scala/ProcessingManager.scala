@@ -9,12 +9,21 @@ import scala.util.{Failure, Random, Success, Try}
 
 class ProcessingManager {
 
-  def callProcessing(dispatcher: DatapointDispatcher): Unit = {
-    val rdd = context.cassandraTable("qvantel", "call")
-    val callSync = context.cassandraTable("qvantel", "callsync")
-    val latestSyncDate = getLatestSyncDate(callSync)
+  val callRdd = context.cassandraTable("qvantel", "call")
+  val productRdd = context.cassandraTable("qvantel", "product")
+  var checkBool = true
 
-    var lastUpdate = new DateTime(latestSyncDate)
+  def callProcessing(dispatcher: DatapointDispatcher): Unit = {
+
+    val callSync = context.cassandraTable("qvantel", "callsync")
+    var latestSyncDate = getLatestSyncDate(callSync)
+    if(checkBool == false) {
+        latestSyncDate = 0
+    }
+
+
+
+    var lastUpdate = new DateTime (latestSyncDate)
 
     while (true) {
       // Sleep $updateInterval since lastUpdate
@@ -31,7 +40,7 @@ class ProcessingManager {
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
       val callFetch = Try {
-        rdd.select("created_at", "event_details", "service", "used_service_units")
+        callRdd.select("created_at", "event_details", "service", "used_service_units")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
@@ -70,9 +79,13 @@ class ProcessingManager {
   }
 
   def productProcessing(dispatcher: DatapointDispatcher): Unit = {
-    val rdd = context.cassandraTable("qvantel", "product")
     val productSync = context.cassandraTable("qvantel", "productsync")
-    val latestSyncDate = getLatestSyncDate(productSync)
+    var latestSyncDate = getLatestSyncDate(productSync)
+
+    if(checkBool == false)
+    {
+      latestSyncDate = 0
+    }
 
     var lastUpdate = new DateTime(latestSyncDate)
 
@@ -91,7 +104,7 @@ class ProcessingManager {
       lastUpdate = DateTime.now(DateTimeZone.UTC)
 
       val productFetch = Try {
-        rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
+        productRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
@@ -119,5 +132,18 @@ class ProcessingManager {
 
     }
   }
+
+
+
+  def getBooleanValue(checkNr: Int): Unit =
+  {
+    checkNr match
+      {
+      case 0 =>{checkBool = false}
+      case 1 =>{checkBool = true}
+    }
+  }
+
+
 
 }

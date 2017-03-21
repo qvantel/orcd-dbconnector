@@ -11,13 +11,13 @@ import ExecutionContext.Implicits.global
 
 trait SyncManager extends SparkConnection {
 
+  private var syncSwitcher = 0
 
+  def syncLoop(dispatcher: DatapointDispatcher, syncNr: Int): Unit = {
 
-  def syncLoop(dispatcher: DatapointDispatcher, syncValue: Int): Unit = {
-
+    syncSwitcher = syncNr
     logger.info("Starting processing of CALLS and PRODUCTS")
     val processmanage = new ProcessingManager()
-    processmanage.getBooleanValue(syncValue)
 
     val startTime = System.nanoTime()
     val f1 = Future(processmanage.callProcessing(dispatcher))
@@ -25,18 +25,20 @@ trait SyncManager extends SparkConnection {
     val endTime = System.nanoTime()
     val differTime = endTime - startTime
 
-    println("------------>" + differTime + "cdr/sec.")
-
     // Waiting for just one Future as there is no point running if either product or call fails
     Await.result(f1, Duration.Inf)
   }
 
 
   def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
-    if (rdd.count() > 0) {
+    if (rdd.count() > 0 && syncSwitcher == 1) {
       rdd.first().get[Long]("ts")
-    } else {
+    }
+    else if(syncSwitcher == 0) {
       0 // sync time will be set to POSIX time
+    }
+    else {
+      0
     }
   }
 

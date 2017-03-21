@@ -10,25 +10,21 @@ import scala.util.{Failure, Random, Success, Try}
 class ProcessingManager {
 
   val callRdd = context.cassandraTable("qvantel", "call")
+  val callSync = context.cassandraTable("qvantel", "callsync")
+
   val productRdd = context.cassandraTable("qvantel", "product")
-  var checkBool = true
+  val productSync = context.cassandraTable("qvantel", "productsync")
+
 
   def callProcessing(dispatcher: DatapointDispatcher): Unit = {
 
-    val callSync = context.cassandraTable("qvantel", "callsync")
-    var latestSyncDate = getLatestSyncDate(callSync)
-    if(checkBool == false) {
-        latestSyncDate = 0
-    }
-
-
-
+    val latestSyncDate = getLatestSyncDate(callSync)
     var lastUpdate = new DateTime (latestSyncDate)
 
     while (true) {
       // Sleep $updateInterval since lastUpdate
       val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
-      if (sleepTime >= 0) {
+      if (sleepTime >= 0){
         Thread.sleep(sleepTime)
       }
 
@@ -79,14 +75,8 @@ class ProcessingManager {
   }
 
   def productProcessing(dispatcher: DatapointDispatcher): Unit = {
-    val productSync = context.cassandraTable("qvantel", "productsync")
-    var latestSyncDate = getLatestSyncDate(productSync)
 
-    if(checkBool == false)
-    {
-      latestSyncDate = 0
-    }
-
+    val latestSyncDate = getLatestSyncDate(productSync)
     var lastUpdate = new DateTime(latestSyncDate)
 
     while (true) {
@@ -130,17 +120,6 @@ class ProcessingManager {
         case Failure(e) => e.printStackTrace()
       }
 
-    }
-  }
-
-
-
-  def getBooleanValue(checkNr: Int): Unit =
-  {
-    checkNr match
-      {
-      case 0 =>{checkBool = false}
-      case 1 =>{checkBool = true}
     }
   }
 

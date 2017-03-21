@@ -81,21 +81,28 @@ object DBConnector extends SparkConnection
           val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
           val eventDetails = row.getUDTValue("event_details")
+          val isRoaming = eventDetails.getBoolean("is_roaming")
 
           // Select a_party country
           val aPartyLocation = eventDetails.getUDTValue("a_party_location")
-          val destination = aPartyLocation.getString("destination")
-          val countryCode = destination.substring(0, 3)
-          val countryISO = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
-          val isRoaming = eventDetails.getBoolean("is_roaming")
+          val aPartyDestination = aPartyLocation.getString("destination")
+          val aPartyCountryCode = aPartyDestination.substring(0, 3)
+          val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+
+
+          // Select b_party country
+          val bPartyLocation = eventDetails.getUDTValue("b_party_location")
+          val bPartyDestination = bPartyLocation.getString("destination")
+          val bPartyCountryCode = bPartyDestination.substring(0, 3)
+          val bPartyCountryISO = countries(bPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
           val amount = usedServiceUnits.getInt("amount")
 
           // Add datapoint to dispatcher
-          if(isRoaming){
-            dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
+          if (isRoaming) {
+            dispatcher.append(s"qvantel.call.$service.destination.from.$aPartyCountryISO.to.$bPartyCountryISO", amount.toString, timeStamp)
           }
           lastUpdate = timeStamp
         })
@@ -138,15 +145,13 @@ object DBConnector extends SparkConnection
         rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
-
           msgCount += 1
-
           val timeStamp = row.getDateTime("created_at")
           val eventCharges = row.getUDTValue("event_charges")
           val product = eventCharges.getUDTValue("product")
           val productName = product.getString("name").replaceAll("\\s+", "")
-
           val magicnumber = 1000
+
           dispatcher.append(s"qvantel.product.$productName", Random.nextInt(magicnumber).toString, timeStamp)
           lastUpdate = timeStamp
         })
@@ -160,7 +165,6 @@ object DBConnector extends SparkConnection
         case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
         case Failure(e) => e.printStackTrace()
       }
-
     }
   }
 
@@ -185,5 +189,4 @@ object DBConnector extends SparkConnection
     val collection = context.parallelize(Seq(SyncModel(1,date)))
     collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
   }
-
 }

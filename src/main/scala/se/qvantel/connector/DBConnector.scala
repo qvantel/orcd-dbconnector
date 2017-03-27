@@ -48,7 +48,7 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
     if(arg.length > 0)
     {
       arg(0) match {
-        case "--benchmark" => logger.info("benchmark were activated.")
+        case "--benchmark" => logger.info("benchmark is activated.")
           // Attempt Connection to Carbon
           dispatcher.connect() match {
             case Success(_) => syncLoop(dispatcher, 0)

@@ -34,7 +34,7 @@ class ProcessingManager {
       var msgCount = 0
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
-
+      val startTime = System.nanoTime()
       val callFetch = Try {
         callRdd.select("created_at", "event_details", "service", "used_service_units")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
@@ -66,6 +66,8 @@ class ProcessingManager {
         case Success(_) if msgCount > 0  => {
           commitBatch(dispatcher, msgCount)
           updateLatestSync("callsync")
+          val endTime = System.nanoTime()
+          measureDataSendPerSecond(startTime, endTime, msgCount)
         }
         case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CALL row from Cassandra")
         case Failure(e) => e.printStackTrace()
@@ -92,7 +94,7 @@ class ProcessingManager {
       var msgCount = 0
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
-
+      val startTime = System.nanoTime()
       val productFetch = Try {
         productRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
@@ -112,9 +114,12 @@ class ProcessingManager {
       }
 
       productFetch match {
+
         case Success(_) if msgCount > 0 => {
           commitBatch(dispatcher, msgCount)
           updateLatestSync("productsync")
+          val endTime = System.nanoTime()
+          measureDataSendPerSecond(startTime, endTime, msgCount)
         }
         case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
         case Failure(e) => e.printStackTrace()
@@ -123,6 +128,12 @@ class ProcessingManager {
     }
   }
 
+  private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Unit ={
+    val nanosec = 1000000000
+    val result = msgCounter/ ((endTime - startTime) / nanosec)
+
+    logger.info(result + "Call/second")
+  }
 
 
 }

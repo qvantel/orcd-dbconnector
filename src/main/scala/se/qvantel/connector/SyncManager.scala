@@ -18,12 +18,9 @@ trait SyncManager extends SparkConnection {
     syncSwitcher = syncNr
     logger.info("Starting processing of CALLS and PRODUCTS")
     val processmanage = new ProcessingManager()
-
-    val startTime = System.nanoTime()
     val f1 = Future(processmanage.callProcessing(dispatcher))
     val f2 = Future(processmanage.productProcessing(dispatcher))
-    val endTime = System.nanoTime()
-    val differTime = endTime - startTime
+
 
     // Waiting for just one Future as there is no point running if either product or call fails
     Await.result(f1, Duration.Inf)
@@ -34,7 +31,7 @@ trait SyncManager extends SparkConnection {
     if (rdd.count() > 0 && syncSwitcher == 1) {
       rdd.first().get[Long]("ts")
     }
-    else if(syncSwitcher == 0) {
+    else if(rdd.count() > 0 && syncSwitcher == 0) {
       0 // sync time will be set to POSIX time
     }
     else {
@@ -49,6 +46,4 @@ trait SyncManager extends SparkConnection {
     val collection = context.parallelize(Seq(SyncModel(1,date)))
     collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
   }
-
-
 }

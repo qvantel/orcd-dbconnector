@@ -37,7 +37,7 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
 
     // Log and count messages sent
     messagesSent += messageQueue.length
-    logger.info("Sending " + messageQueue.length + s" datapoints to carbon, have now sent a total of $messagesSent")
+    //logger.info("Sending " + messageQueue.length + s" datapoints to carbon, have now sent a total of $messagesSent")
 
     // Prepare payload
     var payload = ""

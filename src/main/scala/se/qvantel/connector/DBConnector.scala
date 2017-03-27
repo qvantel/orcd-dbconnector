@@ -38,7 +38,6 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
 
 
   def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int): Unit = {
-    dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
     dispatcher.dispatch()
     logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
   }

@@ -67,7 +67,8 @@ class ProcessingManager {
           commitBatch(dispatcher, msgCount)
           updateLatestSync("callsync")
           val endTime = System.nanoTime()
-          measureDataSendPerSecond(startTime, endTime, msgCount)
+          val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
+          dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now())
         }
         case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CALL row from Cassandra")
         case Failure(e) => e.printStackTrace()
@@ -119,7 +120,8 @@ class ProcessingManager {
           commitBatch(dispatcher, msgCount)
           updateLatestSync("productsync")
           val endTime = System.nanoTime()
-          measureDataSendPerSecond(startTime, endTime, msgCount)
+          val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
+          dispatcher.append(s"qvantel.dbconnector.throughput.product", throughput.toString, DateTime.now())
         }
         case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
         case Failure(e) => e.printStackTrace()
@@ -128,11 +130,16 @@ class ProcessingManager {
     }
   }
 
-  private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Unit ={
+  private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Double = {
     val nanosec = 1000000000
-    val result = msgCounter/ ((endTime - startTime) / nanosec)
+    val timedelta = (endTime - startTime) / nanosec
+    var result = 0.0
+    if (timedelta > 0) { // Handle possible division by zero
+      result = msgCounter / timedelta
+    }
 
-    logger.info(result + "Call/second")
+    logger.info(result + " calls/second")
+    result
   }
 
 

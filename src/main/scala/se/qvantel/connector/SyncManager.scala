@@ -13,31 +13,29 @@ case class SyncModel(id: Int, ts: DateTime)
 
 trait SyncManager extends SparkConnection {
 
-  private var syncSwitcher = 0
+  private var benchmark = false
 
-  def syncLoop(dispatcher: DatapointDispatcher, syncNr: Int): Unit = {
+  def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
 
-    syncSwitcher = syncNr
     logger.info("Starting processing of CALLS and PRODUCTS")
-    val processmanage = new ProcessingManager()
-    val f1 = Future(processmanage.callProcessing(dispatcher))
-    val f2 = Future(processmanage.productProcessing(dispatcher))
-
+    val pm = new ProcessingManager()
+    val f1 = Future(pm.callProcessing(dispatcher))
+    val f2 = Future(pm.productProcessing(dispatcher))
 
     // Waiting for just one Future as there is no point running if either product or call fails
     Await.result(f1, Duration.Inf)
   }
 
-
   def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
-    if (rdd.count() > 0 && syncSwitcher == 1) {
-      rdd.first().get[Long]("ts")
-    }
-    else if(rdd.count() > 0 && syncSwitcher == 0) {
-      0 // sync time will be set to POSIX time
-    }
-    else {
-      0
+    // refactor to remove 0 and 1 to make it more readable
+    rdd.count() match {
+      case 0 => 0
+      case 1 => {
+        benchmark match {
+          case false => rdd.first().get[Long]("ts")
+          case true => 0
+        }
+      }
     }
   }
 

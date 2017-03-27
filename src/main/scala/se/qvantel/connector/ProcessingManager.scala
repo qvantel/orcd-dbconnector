@@ -1,22 +1,15 @@
 package se.qvantel.connector
-
 import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
-
 import scala.util.{Failure, Random, Success, Try}
 
 class ProcessingManager {
 
-  val callRdd = context.cassandraTable("qvantel", "call")
-  val callSync = context.cassandraTable("qvantel", "callsync")
-
-  val productRdd = context.cassandraTable("qvantel", "product")
-  val productSync = context.cassandraTable("qvantel", "productsync")
-
-
   def callProcessing(dispatcher: DatapointDispatcher): Unit = {
 
+    val callRdd = context.cassandraTable("qvantel", "call")
+    val callSync = context.cassandraTable("qvantel", "callsync")
     val latestSyncDate = getLatestSyncDate(callSync)
     var lastUpdate = new DateTime (latestSyncDate)
 
@@ -81,12 +74,13 @@ class ProcessingManager {
         case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CALL row from Cassandra")
         case Failure(e) => e.printStackTrace()
       }
-
     }
   }
 
   def productProcessing(dispatcher: DatapointDispatcher): Unit = {
 
+    val productRdd = context.cassandraTable("qvantel", "product")
+    val productSync = context.cassandraTable("qvantel", "productsync")
     val latestSyncDate = getLatestSyncDate(productSync)
     var lastUpdate = new DateTime(latestSyncDate)
 
@@ -123,7 +117,6 @@ class ProcessingManager {
       }
 
       productFetch match {
-
         case Success(_) if msgCount > 0 => {
           commitBatch(dispatcher, msgCount)
           updateLatestSync("productsync")
@@ -134,7 +127,6 @@ class ProcessingManager {
         case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
         case Failure(e) => e.printStackTrace()
       }
-
     }
   }
 
@@ -149,6 +141,4 @@ class ProcessingManager {
     logger.info(result + " calls/second")
     result
   }
-
-
 }

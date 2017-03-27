@@ -1,10 +1,9 @@
 package se.qvantel.connector
+
+import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
-import se.qvantel.connector.{DatapointDispatcher, SparkConnection, property}
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-import com.datastax.spark.connector._
+
 import scala.util.{Failure, Random, Success, Try}
 
 class ProcessingManager {
@@ -45,19 +44,28 @@ class ProcessingManager {
           val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
           val eventDetails = row.getUDTValue("event_details")
+          val isRoaming = eventDetails.getBoolean("is_roaming")
 
           // Select a_party country
           val aPartyLocation = eventDetails.getUDTValue("a_party_location")
-          val destination = aPartyLocation.getString("destination")
-          val countryCode = destination.substring(0, 3)
-          val countryISO = countries(countryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+          val aPartyDestination = aPartyLocation.getString("destination")
+          val aPartyCountryCode = aPartyDestination.substring(0, 3)
+          val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+
+          // Select b_party country
+          val bPartyLocation = eventDetails.getUDTValue("b_party_location")
+          val bPartyDestination = bPartyLocation.getString("destination")
+          val bPartyCountryCode = bPartyDestination.substring(0, 3)
+          val bPartyCountryISO = countries(bPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
           val amount = usedServiceUnits.getInt("amount")
 
           // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.call.$service.destination.$countryISO", amount.toString, timeStamp)
+          if (isRoaming) {
+            dispatcher.append(s"qvantel.call.$service.destination.from.$aPartyCountryISO.to.$bPartyCountryISO", amount.toString, timeStamp)
+          }
           lastUpdate = timeStamp
         })
       }

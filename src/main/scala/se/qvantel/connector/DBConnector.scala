@@ -1,14 +1,7 @@
 package se.qvantel.connector
-import org.joda.time.DateTime
-import org.joda.time.DateTimeZone
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.rdd.CassandraTableScanRDD
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.Any
 import property.{CountryCodes, Logger, Processing}
 
-import scala.util.{Failure, Random, Success, Try}
-
-case class SyncModel(id: Int, ts: DateTime)
+import scala.util.{Failure, Success}
 
 object DBConnector extends CountryCodes with Logger with Processing with SyncManager {
 
@@ -36,14 +29,13 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
     session.close()
   }
 
-
   def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int): Unit = {
     dispatcher.dispatch()
     logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
   }
 
 
-  def benchmarkChecker(arg: Array[String], dispatcher: DatapointDispatcher): Unit ={
+  def benchmarkChecker(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
     if(arg.length > 0)
     {
       arg(0) match {
@@ -62,11 +54,6 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
         case Success(_) => syncLoop(dispatcher, 1)
         case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
       }
-
     }
-
-
   }
-
-
 }

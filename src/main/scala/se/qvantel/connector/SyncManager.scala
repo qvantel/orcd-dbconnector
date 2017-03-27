@@ -9,6 +9,8 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 
+case class SyncModel(id: Int, ts: DateTime)
+
 trait SyncManager extends SparkConnection {
 
   private var syncSwitcher = 0

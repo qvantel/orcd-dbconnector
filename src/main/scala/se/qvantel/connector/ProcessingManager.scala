@@ -57,7 +57,7 @@ class ProcessingManager {
 
           // Add datapoint to dispatcher
           if (isRoaming) {
-            dispatcher.append(s"qvantel.call.$service.destination.from.$aPartyCountryISO.to.$bPartyCountryISO", amount.toString, timeStamp)
+            dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", amount.toString, timeStamp)
           }
           lastUpdate = timeStamp
         })

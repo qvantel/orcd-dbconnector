@@ -5,9 +5,7 @@ import se.qvantel.connector.DBConnector._
 import scala.util.{Failure, Random, Success, Try}
 
 class ProcessingManager {
-
   def callProcessing(dispatcher: DatapointDispatcher): Unit = {
-
     val callRdd = context.cassandraTable("qvantel", "call")
     val callSync = context.cassandraTable("qvantel", "callsync")
     val latestSyncDate = getLatestSyncDate(callSync)
@@ -62,7 +60,6 @@ class ProcessingManager {
           lastUpdate = timeStamp
         })
       }
-
       callFetch match {
         case Success(_) if msgCount > 0  => {
           commitBatch(dispatcher, msgCount)
@@ -78,7 +75,6 @@ class ProcessingManager {
   }
 
   def productProcessing(dispatcher: DatapointDispatcher): Unit = {
-
     val productRdd = context.cassandraTable("qvantel", "product")
     val productSync = context.cassandraTable("qvantel", "productsync")
     val latestSyncDate = getLatestSyncDate(productSync)

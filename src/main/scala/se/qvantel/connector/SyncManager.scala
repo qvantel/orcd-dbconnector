@@ -17,7 +17,7 @@ trait SyncManager extends SparkConnection {
   private var benchmark = false
 
   def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
-
+    this.benchmark = benchmark
     logger.info("Starting processing of CALLS and PRODUCTS")
     val pm = new ProcessingManager()
     val f1 = Future(pm.cdrProcessing(dispatcher))

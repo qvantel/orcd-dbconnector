@@ -3,7 +3,7 @@ import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone, Seconds}
 import se.qvantel.connector.DBConnector._
 
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.{Failure, Success, Try}
 
 class ProcessingManager {
 
@@ -53,7 +53,6 @@ class ProcessingManager {
               }
             }
           }
-
 
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")

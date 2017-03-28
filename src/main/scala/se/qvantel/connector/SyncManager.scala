@@ -18,13 +18,9 @@ trait SyncManager extends SparkConnection {
 
   def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
     this.benchmark = benchmark
-    logger.info("Starting processing of CALLS and PRODUCTS")
+    logger.info("Starting processing of CDR")
     val pm = new ProcessingManager()
-    val f1 = Future(pm.cdrProcessing(dispatcher))
-    //val f2 = Future(pm.productProcessing(dispatcher))
-
-    // Waiting for just one Future as there is no point running if either product or call fails
-    Await.result(f1, Duration.Inf)
+    pm.cdrProcessing(dispatcher)
   }
 
   def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {

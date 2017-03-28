@@ -45,12 +45,13 @@ class ProcessingManager {
           val aPartyCountryCode = aPartyDestination.substring(0, 3)
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
+          /*
           // Select b_party country
           val bPartyLocation = eventDetails.getUDTValue("b_party_location")
           val bPartyDestination = bPartyLocation.getString("destination")
           val bPartyCountryCode = bPartyDestination.substring(0, 3)
           val bPartyCountryISO = countries(bPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
-
+          */
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
           val amount = usedServiceUnits.getInt("amount")

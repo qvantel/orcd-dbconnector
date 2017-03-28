@@ -1,9 +1,10 @@
 package se.qvantel.connector
 import com.datastax.spark.connector.{CassandraRow, SomeColumns}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector._
 import se.qvantel.connector.DBConnector.logger
+
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.concurrent._
@@ -42,7 +43,7 @@ trait SyncManager extends SparkConnection {
   def updateLatestSync(tableName: String): Unit = {
     // Insert current time stamp for syncing here.
     // Insert timestamp always on id=1 to only have one record of a timestamp.
-    val date = DateTime.now()
+    val date = DateTime.now(DateTimeZone.UTC)
     val collection = context.parallelize(Seq(SyncModel(1,date)))
     collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
   }

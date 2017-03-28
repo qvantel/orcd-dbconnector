@@ -31,7 +31,7 @@ class ProcessingManager {
       lastUpdate = DateTime.now(DateTimeZone.UTC)
       val startTime = System.nanoTime()
       val cdrFetch = Try {
-        cdrRdd.select("created_at", "event_details", "service", "used_service_units")
+        cdrRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
@@ -40,26 +40,14 @@ class ProcessingManager {
 
           val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
-
-          startIntervalDate match {
-            case null => startIntervalDate = timeStamp
-            case _ => {
-              val seconds = Seconds.secondsBetween(startIntervalDate, timeStamp).getSeconds
-              if (seconds >= 10) {
-                val value = cdrCount / 10
-                dispatcher.append("qvantel.cdr.count", value.toString, timeStamp)
-                cdrCount = 0
-                startIntervalDate = timeStamp
-              }
-            }
-          }
-
-
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")
 
           // Select a_party country
           val aPartyLocation = eventDetails.getUDTValue("a_party_location")
+          val eventCharges = row.getUDTValue("event_charges")
+          val product =  eventCharges.getUDTValue("product")
+          val productName = product.getString("name")
           val aPartyDestination = aPartyLocation.getString("destination")
           val aPartyCountryCode = aPartyDestination.substring(0, 3)
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
@@ -76,12 +64,26 @@ class ProcessingManager {
           val amount = usedServiceUnits.getInt("amount")
 
           // Add datapoint to dispatcher
-          if (isRoaming) {
-            dispatcher.append(s"qvantel.cdr.$service.destination.$aPartyCountryISO", amount.toString, timeStamp)
+          // TODO fix count for specific items
+          startIntervalDate match {
+            case null => startIntervalDate = timeStamp
+            case _ => {
+              val seconds = Seconds.secondsBetween(startIntervalDate, timeStamp).getSeconds
+              if (seconds >= 10) {
+                val value = cdrCount / 10
+                if (isRoaming && service.equals("voice")) {
+                  dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", value.toString, timeStamp)
+                }
+                dispatcher.append(s"qvantel.product.$productName", value.toString, timeStamp)
+                cdrCount = 0
+                startIntervalDate = timeStamp
+              }
+            }
           }
           lastUpdate = timeStamp
         })
       }
+
       cdrFetch match {
         case Success(_) if msgCount > 0  => {
           commitBatch(dispatcher, msgCount)

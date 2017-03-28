@@ -6,11 +6,11 @@ import scala.util.{Failure, Random, Success, Try}
 
 class ProcessingManager {
 
-  def callProcessing(dispatcher: DatapointDispatcher): Unit = {
+  def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
 
-    val callRdd = context.cassandraTable("qvantel", "call")
-    val callSync = context.cassandraTable("qvantel", "callsync")
-    val latestSyncDate = getLatestSyncDate(callSync)
+    val cdrRdd = context.cassandraTable("qvantel", "cdr")
+    val cdrSync = context.cassandraTable("qvantel", "cdrsync")
+    val latestSyncDate = getLatestSyncDate(cdrSync)
     var lastUpdate = new DateTime (latestSyncDate)
 
     while (true) {
@@ -20,7 +20,7 @@ class ProcessingManager {
         Thread.sleep(sleepTime)
       }
 
-      logger.info(s"Syncing CALLS since $lastUpdate")
+      logger.info(s"Syncing CDR's since $lastUpdate")
 
       // Reset loop variables
       var msgCount = 0
@@ -28,7 +28,7 @@ class ProcessingManager {
       lastUpdate = DateTime.now(DateTimeZone.UTC)
       val startTime = System.nanoTime()
       val callFetch = Try {
-        callRdd.select("created_at", "event_details", "service", "used_service_units")
+        cdrRdd.select("created_at", "event_details", "service", "used_service_units")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
@@ -57,7 +57,7 @@ class ProcessingManager {
 
           // Add datapoint to dispatcher
           if (isRoaming) {
-            dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", amount.toString, timeStamp)
+            dispatcher.append(s"qvantel.cdr.$service.destination.$aPartyCountryISO", amount.toString, timeStamp)
           }
           lastUpdate = timeStamp
         })
@@ -66,69 +66,17 @@ class ProcessingManager {
       callFetch match {
         case Success(_) if msgCount > 0  => {
           commitBatch(dispatcher, msgCount)
-          updateLatestSync("callsync")
+          updateLatestSync("cdrsync")
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
           dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now())
         }
-        case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CALL row from Cassandra")
+        case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CDR row from Cassandra")
         case Failure(e) => e.printStackTrace()
       }
     }
   }
 
-  def productProcessing(dispatcher: DatapointDispatcher): Unit = {
-
-    val productRdd = context.cassandraTable("qvantel", "product")
-    val productSync = context.cassandraTable("qvantel", "productsync")
-    val latestSyncDate = getLatestSyncDate(productSync)
-    var lastUpdate = new DateTime(latestSyncDate)
-
-    while (true) {
-      // Sleep $updateInterval since lastUpdate
-      val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
-      if (sleepTime >= 0) {
-        Thread.sleep(sleepTime)
-      }
-
-      logger.info(s"Syncing PRODUCT since $lastUpdate")
-
-      // Reset loop variables
-      var msgCount = 0
-      val timeLimit = lastUpdate
-      lastUpdate = DateTime.now(DateTimeZone.UTC)
-      val startTime = System.nanoTime()
-      val productFetch = Try {
-        productRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
-          .where("created_at > ?", timeLimit.toString()).withAscOrder
-          .limit(fetchBatchSize).collect().foreach(row => {
-
-          msgCount += 1
-
-          val timeStamp = row.getDateTime("created_at")
-          val eventCharges = row.getUDTValue("event_charges")
-          val product = eventCharges.getUDTValue("product")
-          val productName = product.getString("name").replaceAll("\\s+", "")
-
-          val magicnumber = 1000
-          dispatcher.append(s"qvantel.product.$productName", Random.nextInt(magicnumber).toString, timeStamp)
-          lastUpdate = timeStamp
-        })
-      }
-
-      productFetch match {
-        case Success(_) if msgCount > 0 => {
-          commitBatch(dispatcher, msgCount)
-          updateLatestSync("productsync")
-          val endTime = System.nanoTime()
-          val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
-          dispatcher.append(s"qvantel.dbconnector.throughput.product", throughput.toString, DateTime.now())
-        }
-        case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
-        case Failure(e) => e.printStackTrace()
-      }
-    }
-  }
 
   private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Double = {
     val nanosec = 1000000000
@@ -138,7 +86,7 @@ class ProcessingManager {
       result = msgCounter / timedelta
     }
 
-    logger.info(result + " calls/second")
+    logger.info(result + " cdrs/second")
     result
   }
 }

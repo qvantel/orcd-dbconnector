@@ -19,8 +19,8 @@ trait SyncManager extends SparkConnection {
 
     logger.info("Starting processing of CALLS and PRODUCTS")
     val pm = new ProcessingManager()
-    val f1 = Future(pm.callProcessing(dispatcher))
-    val f2 = Future(pm.productProcessing(dispatcher))
+    val f1 = Future(pm.cdrProcessing(dispatcher))
+    //val f2 = Future(pm.productProcessing(dispatcher))
 
     // Waiting for just one Future as there is no point running if either product or call fails
     Await.result(f1, Duration.Inf)

@@ -17,6 +17,5 @@ trait SparkConnection {
   val session = connector.openSession()
 
   // create new tables for syncing
-  session.execute("CREATE TABLE IF NOT EXISTS qvantel.callsync(id INT PRIMARY KEY, ts timestamp)")
-  session.execute("CREATE TABLE IF NOT EXISTS qvantel.productsync(id INT PRIMARY KEY, ts timestamp)")
+  session.execute("CREATE TABLE IF NOT EXISTS qvantel.cdrsync(id INT PRIMARY KEY, ts timestamp)")
 }

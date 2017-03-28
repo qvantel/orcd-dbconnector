@@ -32,12 +32,16 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
 
   def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
     var benchmark = false
+    val benchmarkActivatingMsg = "benchmark is activated!"
+    val errorArgsMsg = "the arguments were wrong, ->try --benchmark"
+    val BenchmarkMsg = "--benchmark"
+
     if (arg.length > 0) {
       arg(0) match {
-        case "--benchmark" =>
-          logger.info("benchmark is activated.")
+        case BenchmarkMsg =>
+          logger.info(benchmarkActivatingMsg)
           benchmark = true
-        case _ => logger.info("the arguments were wrong, ->try --benchmark")
+        case _ => logger.info(errorArgsMsg)
       }
     }
     // Attempt Connection to Carbon

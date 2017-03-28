@@ -1,7 +1,8 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.{DateTime, DateTimeZone, Seconds}
 import se.qvantel.connector.DBConnector._
+
 import scala.util.{Failure, Random, Success, Try}
 
 class ProcessingManager {
@@ -12,6 +13,8 @@ class ProcessingManager {
     val cdrSync = context.cassandraTable("qvantel", "cdrsync")
     val latestSyncDate = getLatestSyncDate(cdrSync)
     var lastUpdate = new DateTime (latestSyncDate)
+    var startIntervalDate: DateTime = null
+    var cdrCount = 0
 
     while (true) {
       // Sleep $updateInterval since lastUpdate
@@ -33,9 +36,25 @@ class ProcessingManager {
           .limit(fetchBatchSize).collect().foreach(row => {
 
           msgCount += 1
+          cdrCount += 1
 
           val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
+
+          startIntervalDate match {
+            case null => startIntervalDate = timeStamp
+            case _ => {
+              val seconds = Seconds.secondsBetween(startIntervalDate, timeStamp).getSeconds
+              if (seconds >= 10) {
+                val value = cdrCount / 10
+                dispatcher.append("qvantel.cdr.count", value.toString, timeStamp)
+                cdrCount = 0
+                startIntervalDate = timeStamp
+              }
+            }
+          }
+
+
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")
 

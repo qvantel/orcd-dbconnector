@@ -1,36 +1,19 @@
 package se.qvantel.connector
-
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.{CassandraRow, SomeColumns}
-import com.datastax.spark.connector.rdd.CassandraTableScanRDD
-import org.joda.time.{DateTime, DateTimeZone}
 import property.{CountryCodes, Logger, Processing}
+import scala.util.{Failure, Success}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Random, Success, Try}
-
-case class SyncModel(id: Int, ts: DateTime)
-
-object DBConnector extends SparkConnection
-  with CountryCodes with Logger with Processing {
+object DBConnector extends CountryCodes with Logger with Processing with SyncManager {
 
   def main(args: Array[String]): Unit = {
-
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 
     val graphiteIP = "localhost"
     val graphitePort = 2003
-
     val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
 
-    // Attempt Connection to Carbon
-    dispatcher.connect() match {
-      case Success(_) => syncLoop(dispatcher)
-      case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
-    }
+    // checks if the user is running the sync or not.
+    syncStarter(args, dispatcher)
 
     // Close UDP Connection
     dispatcher.close()
@@ -42,151 +25,29 @@ object DBConnector extends SparkConnection
     session.close()
   }
 
-  def syncLoop(dispatcher: DatapointDispatcher): Unit = {
-    logger.info("Starting processing of CALLS and PRODUCTS")
-    val f1 = Future(callProcessing(dispatcher))
-    val f2 = Future(productProcessing(dispatcher))
-   // Waiting for just one Future as there is no point running if either product or call fails
-    Await.result(f1, Duration.Inf)
-  }
-
-  def callProcessing(dispatcher: DatapointDispatcher): Unit = {
-    val rdd = context.cassandraTable("qvantel", "call")
-    val callSync = context.cassandraTable("qvantel", "callsync")
-    val latestSyncDate = getLatestSyncDate(callSync)
-
-    var lastUpdate = new DateTime(latestSyncDate)
-
-    while (true) {
-      // Sleep $updateInterval since lastUpdate
-      val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
-      if (sleepTime >= 0) {
-        Thread.sleep(sleepTime)
-      }
-
-      logger.info(s"Syncing CALLS since $lastUpdate")
-
-      // Reset loop variables
-      var msgCount = 0
-      val timeLimit = lastUpdate
-      lastUpdate = DateTime.now(DateTimeZone.UTC)
-
-      val callFetch = Try {
-        rdd.select("created_at", "event_details", "service", "used_service_units")
-          .where("created_at > ?", timeLimit.toString()).withAscOrder
-          .limit(fetchBatchSize).collect().foreach(row => {
-
-          msgCount += 1
-
-          val service = row.getString("service")
-          val timeStamp = row.getDateTime("created_at")
-          val eventDetails = row.getUDTValue("event_details")
-          val isRoaming = eventDetails.getBoolean("is_roaming")
-
-          // Select a_party country
-          val aPartyLocation = eventDetails.getUDTValue("a_party_location")
-          val aPartyDestination = aPartyLocation.getString("destination")
-          val aPartyCountryCode = aPartyDestination.substring(0, 3)
-          val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
-
-
-          // Select b_party country
-          val bPartyLocation = eventDetails.getUDTValue("b_party_location")
-          val bPartyDestination = bPartyLocation.getString("destination")
-          val bPartyCountryCode = bPartyDestination.substring(0, 3)
-          val bPartyCountryISO = countries(bPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
-
-          // Select used_service_units
-          val usedServiceUnits = row.getUDTValue("used_service_units")
-          val amount = usedServiceUnits.getInt("amount")
-
-          // Add datapoint to dispatcher
-          if (isRoaming) {
-            dispatcher.append(s"qvantel.call.$service.destination.from.$aPartyCountryISO.to.$bPartyCountryISO", amount.toString, timeStamp)
-          }
-          lastUpdate = timeStamp
-        })
-      }
-
-      callFetch match {
-        case Success(_) if msgCount > 0  => {
-          commitBatch(dispatcher, msgCount)
-          updateLatestSync("callsync")
-        }
-        case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CALL row from Cassandra")
-        case Failure(e) => e.printStackTrace()
-      }
-
-    }
-  }
-
-  def productProcessing(dispatcher: DatapointDispatcher): Unit = {
-    val rdd = context.cassandraTable("qvantel", "product")
-    val productSync = context.cassandraTable("qvantel", "productsync")
-    val latestSyncDate = getLatestSyncDate(productSync)
-
-    var lastUpdate = new DateTime(latestSyncDate)
-
-    while (true) {
-      // Sleep $updateInterval since lastUpdate
-      val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
-      if (sleepTime >= 0) {
-        Thread.sleep(sleepTime)
-      }
-
-      logger.info(s"Syncing PRODUCT since $lastUpdate")
-
-      // Reset loop variables
-      var msgCount = 0
-      val timeLimit = lastUpdate
-      lastUpdate = DateTime.now(DateTimeZone.UTC)
-
-      val productFetch = Try {
-        rdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
-          .where("created_at > ?", timeLimit.toString()).withAscOrder
-          .limit(fetchBatchSize).collect().foreach(row => {
-          msgCount += 1
-          val timeStamp = row.getDateTime("created_at")
-          val eventCharges = row.getUDTValue("event_charges")
-          val product = eventCharges.getUDTValue("product")
-          val productName = product.getString("name").replaceAll("\\s+", "")
-          val magicnumber = 1000
-
-          dispatcher.append(s"qvantel.product.$productName", Random.nextInt(magicnumber).toString, timeStamp)
-          lastUpdate = timeStamp
-        })
-      }
-
-      productFetch match {
-        case Success(_) if msgCount > 0 => {
-          commitBatch(dispatcher, msgCount)
-          updateLatestSync("productsync")
-        }
-        case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new PRODUCT row from Cassandra")
-        case Failure(e) => e.printStackTrace()
-      }
-    }
-  }
-
   def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int): Unit = {
-    dispatcher.append(s"qvantel.dbconnector.throughput", msgCount.toString, new DateTime(DateTimeZone.UTC))
     dispatcher.dispatch()
     logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
   }
 
-  def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
-    if (rdd.count() > 0) {
-      rdd.first().get[Long]("ts")
-    } else {
-      0 // sync time will be set to POSIX time
-    }
-  }
+  def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
+    var benchmark = false
+    val benchmarkActivatingMsg = "benchmark is activated!"
+    val errorArgsMsg = "the arguments were wrong, ->try --benchmark"
+    val BenchmarkMsg = "--benchmark"
 
-  def updateLatestSync(tableName: String): Unit = {
-    // Insert current time stamp for syncing here.
-    // Insert timestamp always on id=1 to only have one record of a timestamp.
-    val date = DateTime.now()
-    val collection = context.parallelize(Seq(SyncModel(1,date)))
-    collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
+    if (arg.length > 0) {
+      arg(0) match {
+        case BenchmarkMsg =>
+          logger.info(benchmarkActivatingMsg)
+          benchmark = true
+        case _ => logger.info(errorArgsMsg)
+      }
+    }
+    // Attempt Connection to Carbon
+    dispatcher.connect() match {
+      case Success(_) => syncLoop(dispatcher, benchmark)
+      case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
+    }
   }
 }

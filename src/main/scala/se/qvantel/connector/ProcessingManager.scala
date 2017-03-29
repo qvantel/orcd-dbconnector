@@ -51,7 +51,7 @@ class ProcessingManager {
           val aPartyLocation = eventDetails.getUDTValue("a_party_location")
           val eventCharges = row.getUDTValue("event_charges")
           val product =  eventCharges.getUDTValue("product")
-          val productName = product.getString("name")
+          val productName = product.getString("name").replaceAll(" ", "")
           val aPartyDestination = aPartyLocation.getString("destination")
           val aPartyCountryCode = aPartyDestination.substring(0, 3)
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
@@ -92,7 +92,7 @@ class ProcessingManager {
       cdrFetch match {
         case Success(_) if msgCount > 0  => {
           commitBatch(dispatcher, msgCount)
-          updateLatestSync("cdrsync", new DateTime(newestTsMs))
+          updateLatestSync("cdrsync", new DateTime(newestTsMs, DateTimeZone.UTC))
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
           dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now(DateTimeZone.UTC))

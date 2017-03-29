@@ -1,9 +1,10 @@
 package se.qvantel.connector
 import com.datastax.spark.connector.{CassandraRow, SomeColumns}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector._
 import se.qvantel.connector.DBConnector.logger
+
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.concurrent._
@@ -16,14 +17,10 @@ trait SyncManager extends SparkConnection {
   private var benchmark = false
 
   def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
-
+    this.benchmark = benchmark
     logger.info("Starting processing of CDR")
     val pm = new ProcessingManager()
-    val f1 = Future(pm.cdrProcessing(dispatcher))
-    //val f2 = Future(pm.productProcessing(dispatcher))
-
-    // Waiting for just one Future as there is no point running if either product or call fails
-    Await.result(f1, Duration.Inf)
+    pm.cdrProcessing(dispatcher)
   }
 
   def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {

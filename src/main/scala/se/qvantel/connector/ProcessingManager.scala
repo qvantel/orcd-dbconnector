@@ -27,7 +27,8 @@ class ProcessingManager {
       val timeLimit = lastUpdate
       lastUpdate = DateTime.now(DateTimeZone.UTC)
       val startTime = System.nanoTime()
-      val callFetch = Try {
+      var newestTsMs : Long = 0
+      val cdrFetch = Try {
         cdrRdd.select("created_at", "event_details", "service", "used_service_units")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
@@ -36,6 +37,9 @@ class ProcessingManager {
 
           val service = row.getString("service")
           val timeStamp = row.getDateTime("created_at")
+          if (timeStamp.getMillis > newestTsMs){
+              newestTsMs = timeStamp.getMillis
+          }
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")
 
@@ -46,10 +50,12 @@ class ProcessingManager {
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Select b_party country
-          val bPartyLocation = eventDetails.getUDTValue("b_party_location")
-          val bPartyDestination = bPartyLocation.getString("destination")
-          val bPartyCountryCode = bPartyDestination.substring(0, 3)
-          val bPartyCountryISO = countries(bPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+          /*if(service == "voice"){
+            val bPartyLocation = eventDetails.getUDTValue("b_party_location")
+            val bPartyDestination = bPartyLocation.getString("destination")
+            val bPartyCountryCode = bPartyDestination.substring(0, 3)
+            val bPartyCountryISO = countries(bPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
+          }*/
 
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
@@ -63,10 +69,10 @@ class ProcessingManager {
         })
       }
 
-      callFetch match {
+      cdrFetch match {
         case Success(_) if msgCount > 0  => {
           commitBatch(dispatcher, msgCount)
-          updateLatestSync("cdrsync")
+          updateLatestSync("cdrsync", new DateTime(newestTsMs))
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
           dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now())

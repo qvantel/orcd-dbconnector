@@ -1,14 +1,9 @@
 package se.qvantel.connector
 import com.datastax.spark.connector.{CassandraRow, SomeColumns}
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.DateTime
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector._
 import se.qvantel.connector.DBConnector.logger
-
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.concurrent._
-import ExecutionContext.Implicits.global
 
 case class SyncModel(id: Int, ts: DateTime)
 

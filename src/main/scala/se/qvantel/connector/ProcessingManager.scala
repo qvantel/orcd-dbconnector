@@ -1,6 +1,6 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
-import org.joda.time.{DateTime, DateTimeZone, Seconds}
+import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
 
 import scala.util.{Failure, Success, Try}
@@ -12,13 +12,11 @@ class ProcessingManager {
     val cdrRdd = context.cassandraTable("qvantel", "cdr")
     val cdrSync = context.cassandraTable("qvantel", "cdrsync")
     val latestSyncDate = getLatestSyncDate(cdrSync)
-    var startIntervalDate: DateTime = null
-    var cdrCount = 0
-    var lastUpdate = new DateTime(latestSyncDate, DateTimeZone.UTC)
+    var lastUpdate = 0L
 
     while (true) {
       // Sleep $updateInterval since lastUpdate
-      val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
+      val sleepTime = ((lastUpdate*1000) + updateInterval) - System.currentTimeMillis()
       if (sleepTime >= 0){
         Thread.sleep(sleepTime)
       }
@@ -28,21 +26,22 @@ class ProcessingManager {
       // Reset loop variables
       var msgCount = 0
       val timeLimit = lastUpdate
-      lastUpdate = DateTime.now(DateTimeZone.UTC)
+      lastUpdate = System.currentTimeMillis() / 1000L
       val startTime = System.nanoTime()
-      var newestTsMs : Long = 0
+      var newestTsMs = 0L
       val cdrFetch = Try {
         cdrRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
           .where("created_at > ?", timeLimit.toString()).withAscOrder
           .limit(fetchBatchSize).collect().foreach(row => {
 
           msgCount += 1
-          cdrCount += 1
 
           val service = row.getString("service")
-          val timeStamp = row.getDateTime("created_at")
-          if (timeStamp.getMillis > newestTsMs){
-              newestTsMs = timeStamp.getMillis
+          val unixMicroTimeStamp = row.getLong("created_at")
+          val unixMiliTimeStamp = unixMicroTimeStamp/1000
+          val timeStamp = unixMicroTimeStamp/1000000
+          if (unixMiliTimeStamp > newestTsMs){
+              newestTsMs = unixMiliTimeStamp
           }
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")
@@ -59,15 +58,13 @@ class ProcessingManager {
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
           val amount = usedServiceUnits.getInt("amount")
-          dispatcher.append(s"qvantel.product.$productName", timeStamp)
 
+          // Add datapoint to dispatcher
+          dispatcher.append(s"qvantel.product.$productName", timeStamp)
           if (isRoaming && service.equals("voice")) {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", timeStamp)
           }
 
-          // Add datapoint to dispatcher
-          // TODO fix count for specific items
-          // not fetching old items
           lastUpdate = timeStamp
         })
       }

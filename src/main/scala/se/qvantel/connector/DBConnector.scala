@@ -24,12 +24,6 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
     // Close cassandra session
     session.close()
   }
-  /*
-  def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int, ts: String): Unit = {
-    dispatcher.dispatch(ts)
-    logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
-  }
-  */
 
   def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
     var benchmark = false

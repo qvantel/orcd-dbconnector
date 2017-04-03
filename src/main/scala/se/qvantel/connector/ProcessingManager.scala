@@ -59,42 +59,26 @@ class ProcessingManager {
           // Select used_service_units
           val usedServiceUnits = row.getUDTValue("used_service_units")
           val amount = usedServiceUnits.getInt("amount")
-          dispatcher.append(s"qvantel.product.$productName", 1.toString, timeStamp)
+          dispatcher.append(s"qvantel.product.$productName", timeStamp)
 
           if (isRoaming && service.equals("voice")) {
-            dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", 1.toString, timeStamp)
+            dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", timeStamp)
           }
 
           // Add datapoint to dispatcher
           // TODO fix count for specific items
           // not fetching old items
-          startIntervalDate match {
-            case null => startIntervalDate = timeStamp
-            case _ => {
-              val seconds = Seconds.secondsBetween(startIntervalDate, timeStamp).getSeconds
-              if (seconds >= 10) {
-                val value = cdrCount / 10
-                if (isRoaming && service.equals("voice")) {
-                  dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", value.toString, timeStamp)
-                }
-                dispatcher.append(s"qvantel.product.$productName", value.toString, timeStamp)
-                logger.info(productName)
-                cdrCount = 0
-                startIntervalDate = timeStamp
-              }
-            }
-          }
           lastUpdate = timeStamp
         })
       }
 
       cdrFetch match {
         case Success(_) if msgCount > 0  => {
-          commitBatch(dispatcher, msgCount, lastUpdate.toString)
+          //commitBatch(dispatcher, msgCount, lastUpdate.toString)
           updateLatestSync("cdrsync", new DateTime(newestTsMs, DateTimeZone.UTC))
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
-          dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now(DateTimeZone.UTC))
+          //dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now(DateTimeZone.UTC))
         }
         case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CDR row from Cassandra")
         case Failure(e) => e.printStackTrace()

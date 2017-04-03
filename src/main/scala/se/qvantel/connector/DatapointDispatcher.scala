@@ -36,7 +36,8 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
       case _ => {
         val seconds = Seconds.secondsBetween(startIntervalDate, timeStamp).getSeconds
         if (seconds >= timeStampInterval) {
-          dispatch(startIntervalDate.toString)
+          val timestampstr = (startIntervalDate.getMillis() / 1000L).toString()
+          dispatch(timestampstr)
           countedRecords.clear()
           startIntervalDate = new DateTime(timeStamp, DateTimeZone.UTC)
         }
@@ -62,7 +63,7 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
 
     // Send payload
     var payload = ""
-    countedRecords.foreach(p => payload +=  s"${p._1} ${(p._2)} ${ts} \n") //append payload
+    countedRecords.foreach(p => payload +=  s"${p._1} ${(p._2.toString)} ${ts} \n") //append payload
     logger.info(payload)
     out.print(payload)
     //out.print("qvantel.product.CallPlanNormal 73 1491210661")

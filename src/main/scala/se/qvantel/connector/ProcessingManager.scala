@@ -50,7 +50,7 @@ class ProcessingManager {
           // Select a_party country
           val aPartyLocation = eventDetails.getUDTValue("a_party_location")
           val eventCharges = row.getUDTValue("event_charges")
-          val product =  eventCharges.getUDTValue("product")
+          val product =  eventCharges.getUDTValue("product") // investigate
           val productName = product.getString("name")
           val aPartyDestination = aPartyLocation.getString("destination")
           val aPartyCountryCode = aPartyDestination.substring(0, 3)

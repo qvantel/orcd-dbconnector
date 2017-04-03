@@ -2,7 +2,6 @@ package se.qvantel.connector
 import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
-
 import scala.util.{Failure, Success, Try}
 
 class ProcessingManager {
@@ -21,17 +20,17 @@ class ProcessingManager {
         Thread.sleep(sleepTime)
       }
 
-      logger.info(s"Syncing CDR's since $lastUpdate")
+      val lastUpdateDate = new DateTime(lastUpdate*1000L)
+      logger.info(s"Syncing CDR's since $lastUpdateDate")
 
       // Reset loop variables
       var msgCount = 0
-      val timeLimit = lastUpdate
-      lastUpdate = System.currentTimeMillis() / 1000L
+      val lastUpdateInMicro = lastUpdate*1000000
       val startTime = System.nanoTime()
       var newestTsMs = 0L
       val cdrFetch = Try {
         cdrRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
-          .where("created_at > ?", timeLimit.toString()).withAscOrder
+          .where("created_at > ?", lastUpdateInMicro).where("clustering_key=0").clusteringOrder(rdd.ClusteringOrder.Ascending)
           .limit(fetchBatchSize).collect().foreach(row => {
 
           msgCount += 1
@@ -65,7 +64,9 @@ class ProcessingManager {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", timeStamp)
           }
 
-          lastUpdate = timeStamp
+          if (lastUpdate < timeStamp) {
+            lastUpdate = timeStamp
+          }
         })
       }
 

@@ -52,7 +52,6 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
     // Send payload
     var payload = ""
     countedRecords.foreach(p => payload +=  s"${p._1} ${(p._2.toString)} ${ts} \n") //append payload
-    logger.info(payload)
     out.print(payload)
   }
 

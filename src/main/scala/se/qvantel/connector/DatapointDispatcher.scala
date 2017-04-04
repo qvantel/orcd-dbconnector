@@ -13,10 +13,11 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
   val socket = new Socket()
   val graphiteAddress = new InetSocketAddress(ip, port)
   var startIntervalDate = 0L
-  val timeStampInterval = 10
   var elementsInBatch = 0
   var messagesSent = 0
-  var countedRecords =  mutable.HashMap.empty[String, Int]
+  type CdrCount = Int
+  type Destination = String
+  var countedRecords =  mutable.HashMap.empty[Destination, CdrCount]
 
   def connect(): Try[Unit] = {
     val timeout = 200
@@ -24,6 +25,7 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
   }
 
   def append(destination: String, timeStamp: Long): Unit = {
+    val timeStampInterval = 10
 
     if (!countedRecords.contains(destination)) {
       countedRecords.put(destination, 0)

@@ -23,6 +23,6 @@ trait SparkConnection extends Config{
   val session = connector.openSession()
 
   // create new tables for syncing
-  session.execute(config.getString("spark.cassandra.create.table"))
+  session.execute("CREATE TABLE IF NOT EXISTS " + config.getString("spark.cassandra.keyspace") + ".cdrsync(id INT PRIMARY KEY, ts timestamp)")
 }
 

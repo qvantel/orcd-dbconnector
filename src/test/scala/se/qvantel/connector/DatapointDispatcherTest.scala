@@ -27,9 +27,14 @@ class DatapointDispatcherTest extends FunSuite {
     foo.foreach(metric => dispatcher.append(metric.str, metric.ts))
     dispatcher.dispatch(timeStamp)
 
-    val str = new String(dispatcher.baos.toByteArray, StandardCharsets.UTF_8)
-      .split("\n")
-      .map(str => str.trim())
+    val str = dispatcher.baos match {
+      case Some(b) => {
+        new String(b.toByteArray, StandardCharsets.UTF_8)
+          .split("\n")
+          .map(str => str.trim())
+      }
+      case None => fail("Baos is not set")
+    }
 
     assert(str(0).equals(s"${destinations(1)} 3 ${timeStamp}"))
     assert(str(1).equals(s"${destinations.head} 4 ${timeStamp}"))

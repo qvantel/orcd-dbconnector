@@ -44,6 +44,20 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
   }
 
   def dispatch(ts: Long): Unit = {
+    // Socket output stream
+    val out: PrintStream = new PrintStream(socket.getOutputStream)
+
+    // Log and count messages sent
+    messagesSent += elementsInBatch
+    elementsInBatch = 0
+
+    // Send payload
+    val payload = countedRecords.map(p => s"${p._1} ${p._2.toString} ${ts} ")
+      .mkString("\n")
+
+    out.print(payload)
+    
+    /*
     isConnected() match {
       case true => {
         // Socket output stream
@@ -65,7 +79,10 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
         dispatch(ts)
       }
     }
+    */
   }
+
+  /*
 
   /** Attempts to reconnect to Carbon
     * Timeout for check is 5 seconds
@@ -85,12 +102,13 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
   def isConnected(): Boolean = {
     val address = s"</dev/tcp/${ip}/${port} 2>/dev/null"
 
-    s"timeout 2 bash -c ${address}; echo ${"$?"} | grep [0-9]" ! match {
+    s"timeout -t2 bash -c ${address}; echo ${"$?"} | grep [0-9]" ! match {
       case 0 => true
       case 1 => false
     }
   }
+  */
 
-  
+
   def close(): Unit = socket.close()
 }

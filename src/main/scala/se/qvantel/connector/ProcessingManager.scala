@@ -2,14 +2,16 @@ package se.qvantel.connector
 import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
+import se.qvantel.connector.property.SparkConfig
+
 import scala.util.{Failure, Success, Try}
 
-class ProcessingManager {
+class ProcessingManager extends SparkConfig {
 
   def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
 
-    val cdrRdd = context.cassandraTable(config.getString("spark.cassandra.keyspace"), "cdr")
-    val cdrSync = context.cassandraTable(config.getString("spark.cassandra.keyspace"), "cdrsync")
+    val cdrRdd = context.cassandraTable(keySpace, cdrTable)
+    val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     val latestSyncDate = getLatestSyncDate(cdrSync)
     var lastUpdate = 0L
 
@@ -73,7 +75,7 @@ class ProcessingManager {
       cdrFetch match {
         case Success(_) if msgCount > 0  => {
           //commitBatch(dispatcher, msgCount, lastUpdate.toString)
-          updateLatestSync("cdrsync", new DateTime(newestTsMs, DateTimeZone.UTC))
+          updateLatestSync(new DateTime(newestTsMs, DateTimeZone.UTC))
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
           //dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now(DateTimeZone.UTC))

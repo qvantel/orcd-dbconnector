@@ -11,6 +11,7 @@ trait SparkConnection extends SparkConfig {
     .set("spark.cassandra.connection.host", hostName)
     .set("spark.cassandra.auth.username", userName)
     .set("spark.cassandra.auth.password", password)
+    .set("spark.cassandra.connection.port", cassandraPort)
   val context = new SparkContext("local[2]", "database", conf)
 
   // Setup cassandra connector
@@ -19,6 +20,6 @@ trait SparkConnection extends SparkConfig {
   val session = connector.openSession()
 
   // create new tables for syncing
-  session.execute("CREATE TABLE IF NOT EXISTS " + config.getString("spark.cassandra.keyspace") + ".cdrsync(id INT PRIMARY KEY, ts timestamp)")
+  session.execute("CREATE TABLE IF NOT EXISTS " + keySpace + "." + cdrSyncTable + "(id INT PRIMARY KEY, ts timestamp)")
 }
 

@@ -31,10 +31,10 @@ trait SyncManager extends SparkConnection {
     }
   }
 
-  def updateLatestSync(tableName: String, ts: DateTime): Unit = {
+  def updateLatestSync(ts: DateTime): Unit = {
     // Insert current time stamp for syncing here.
     // Insert timestamp always on id=1 to only have one record of a timestamp.
     val collection = context.parallelize(Seq(SyncModel(1,ts)))
-    collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
+    collection.saveToCassandra(keySpace, cdrSyncTable, SomeColumns("id","ts"))
   }
 }

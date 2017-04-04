@@ -8,7 +8,9 @@ import java.io.{InputStream}
 
 trait CountryCodes extends Config {
   val countriesFile = config.getString("gen.countries.file")
-  val countries = HashMap.empty[String, String]
+  type MobileCountryCode = String
+  type CountryISO = String
+  val countries = HashMap.empty[MobileCountryCode, CountryISO]
 
   def getCountriesByMcc(): Unit = {
     // Open a source file

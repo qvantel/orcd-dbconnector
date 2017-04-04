@@ -56,7 +56,6 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
       .mkString("\n")
 
     out.print(payload)
-    
     /*
     isConnected() match {
       case true => {

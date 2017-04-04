@@ -8,8 +8,8 @@ class ProcessingManager {
 
   def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
 
-    val cdrRdd = context.cassandraTable("qvantel", "cdr")
-    val cdrSync = context.cassandraTable("qvantel", "cdrsync")
+    val cdrRdd = context.cassandraTable(config.getString("spark.cassandra.keyspace"), "cdr")
+    val cdrSync = context.cassandraTable(config.getString("spark.cassandra.keyspace"), "cdrsync")
     val latestSyncDate = getLatestSyncDate(cdrSync)
     var lastUpdate = 0L
 

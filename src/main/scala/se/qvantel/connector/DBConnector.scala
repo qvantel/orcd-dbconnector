@@ -25,11 +25,6 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
     session.close()
   }
 
-  def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int): Unit = {
-    dispatcher.dispatch()
-    logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
-  }
-
   def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
     var benchmark = false
     val benchmarkActivatingMsg = "benchmark is activated!"

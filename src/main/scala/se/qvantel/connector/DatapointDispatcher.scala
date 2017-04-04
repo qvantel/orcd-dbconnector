@@ -8,35 +8,56 @@ import sys.process._
 import scala.collection.mutable
 import scala.util.Try
 
-class DatapointDispatcher(ip: String, port: Int) extends Logger {
+class DatapointDispatcher extends Logger {
 
-  val socket = new Socket()
-  val graphiteAddress = new InetSocketAddress(ip, port)
+  var socket : Socket = null
+  var graphiteAddress : InetSocketAddress = null
   var startIntervalDate = 0L
+  var baos : ByteArrayOutputStream = null
+  var autoSend : Boolean = true
+
+  // Time (in seconds) to wait in between sending the records.
+  val timeStampInterval = 10
+
+  // Output metric of how many metrics were send during $timeStampInterval
   var elementsInBatch = 0
+
+  // Output metric of how many times a netcat/query was sent to graphite.
   var messagesSent = 0
+
   type CdrCount = Int
   type Destination = String
+  // A map, pointing a destination to an integer. Call append to increment the value.
   var countedRecords =  mutable.HashMap.empty[Destination, CdrCount]
 
-  def connect(): Try[Unit] = {
-    val timeout = 200
-    Try(socket.connect(graphiteAddress, timeout))
+  def init(ip: String, port : Int) : Try[Unit] = {
+    socket = new Socket()
+    graphiteAddress = new InetSocketAddress(ip, port)
+
+    Try { connect() }
   }
 
-  def append(destination: String, timeStamp: Long): Unit = {
-    val timeStampInterval = 10
+  def disableAutoSend(): Unit = {
+    autoSend = false
+  }
 
-    if (!countedRecords.contains(destination)) {
-      countedRecords.put(destination, 0)
+  def connect(): Unit = {
+    val timeout = 5000
+    socket.connect(graphiteAddress, timeout)
+  }
+
+  def isTimeToSendRecords(timestamp : Long): Boolean = {
+    if ((timestamp - startIntervalDate) >= timeStampInterval) {
+      true
     }
-    countedRecords.put(destination, countedRecords(destination) + 1)
-    elementsInBatch += 1
-    startIntervalDate match {
+    false
+  }
+
+  def sendMetrics(timeStamp: Long) : Unit = {
+   startIntervalDate match {
       case 0 => startIntervalDate = timeStamp
       case _ => {
-        val seconds = timeStamp - startIntervalDate
-        if (seconds >= timeStampInterval) {
+        if (autoSend && isTimeToSendRecords(timeStamp)) {
           dispatch(startIntervalDate)
           countedRecords.clear()
           startIntervalDate = timeStamp
@@ -45,9 +66,39 @@ class DatapointDispatcher(ip: String, port: Int) extends Logger {
     }
   }
 
+  def getStream: Either[OutputStream, ByteArrayOutputStream] = {
+    if (socket == null) {
+      Right(new ByteArrayOutputStream())
+    }
+    else {
+      Left(socket.getOutputStream)
+    }
+  }
+
+  def append(destination: String, timeStamp: Long): Unit = {
+
+    if (!countedRecords.contains(destination)) {
+      countedRecords.put(destination, 0)
+    }
+    countedRecords.put(destination, countedRecords(destination) + 1)
+
+    // Increment output metric
+    elementsInBatch += 1
+
+    // See if need to send metrics
+    sendMetrics(timeStamp)
+  }
+
   def dispatch(ts: Long): Unit = {
     // Socket output stream
-    val out: PrintStream = new PrintStream(socket.getOutputStream)
+
+    val out = getStream match {
+      case Left(outputStream) => new PrintStream(outputStream)
+      case Right(byteArrayOutputStream) => {
+        baos = byteArrayOutputStream
+        new PrintStream(baos)
+      }
+    }
 
     // Log and count messages sent
     messagesSent += elementsInBatch

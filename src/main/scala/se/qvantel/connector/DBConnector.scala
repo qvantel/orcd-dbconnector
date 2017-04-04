@@ -10,7 +10,7 @@ object DBConnector extends CountryCodes with Logger
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 
-    val dispatcher = new DatapointDispatcher(graphiteHost, graphitePort)
+    val dispatcher = new DatapointDispatcher()
 
     // checks if the user is running the sync or not.
     syncStarter(args, dispatcher)
@@ -43,7 +43,7 @@ object DBConnector extends CountryCodes with Logger
       }
     }
     // Attempt Connection to Carbon
-    dispatcher.connect() match {
+    dispatcher.init(graphiteHost, graphitePort) match {
       case Success(_) => syncLoop(dispatcher, benchmark)
       case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
     }

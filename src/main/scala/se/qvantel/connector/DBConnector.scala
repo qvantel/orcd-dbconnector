@@ -10,10 +10,10 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
 
     val graphiteIP = "localhost"
     val graphitePort = 2003
-    val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
+    val dispatcher = new DatapointDispatcher()
 
     // checks if the user is running the sync or not.
-    syncStarter(args, dispatcher)
+    syncStarter(args, dispatcher, graphiteIP, graphitePort)
 
     // Close UDP Connection
     dispatcher.close()
@@ -25,7 +25,7 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
     session.close()
   }
 
-  def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
+  def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher, graphiteIP : String, graphitePort : Int): Unit = {
     var benchmark = false
     val benchmarkActivatingMsg = "benchmark is activated!"
     val errorArgsMsg = "the arguments were wrong, ->try --benchmark"
@@ -40,7 +40,7 @@ object DBConnector extends CountryCodes with Logger with Processing with SyncMan
       }
     }
     // Attempt Connection to Carbon
-    dispatcher.connect() match {
+    dispatcher.init(graphiteIP, graphitePort) match {
       case Success(_) => syncLoop(dispatcher, benchmark)
       case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
     }

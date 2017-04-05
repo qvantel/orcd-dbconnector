@@ -14,6 +14,7 @@ class DatapointDispatcher extends Logger {
   var graphiteAddress = None: Option[InetSocketAddress]
   var baos = None: Option[ByteArrayOutputStream]
   var startIntervalDate = 0L
+
   var autoSend : Boolean = true
 
   // Time (in seconds) to wait in between sending the records.

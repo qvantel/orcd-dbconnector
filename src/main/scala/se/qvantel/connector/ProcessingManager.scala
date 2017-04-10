@@ -56,10 +56,6 @@ class ProcessingManager extends SparkConfig {
           val aPartyCountryCode = aPartyDestination.substring(0, 3)
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
-          // Select used_service_units
-          val usedServiceUnits = row.getUDTValue("used_service_units")
-          val amount = usedServiceUnits.getInt("amount")
-
           // Add datapoint to dispatcher
           dispatcher.append(s"qvantel.product.$productName", timeStamp)
           if (isRoaming) {

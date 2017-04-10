@@ -2,9 +2,7 @@ package se.qvantel.connector
 
 import java.io._
 import java.net._
-
 import property.Logger
-import sys.process._
 import scala.collection.mutable
 import scala.util.Try
 

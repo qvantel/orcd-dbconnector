@@ -1,7 +1,6 @@
 package se.qvantel.connector
 
 import java.nio.charset.StandardCharsets
-
 import org.scalatest.FunSuite
 
 case class Metric(str: String, ts : Long)

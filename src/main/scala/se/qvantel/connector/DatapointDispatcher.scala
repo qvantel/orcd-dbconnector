@@ -5,8 +5,9 @@ import java.net._
 import property.Logger
 import scala.collection.mutable
 import scala.util.Try
+import se.qvantel.connector.property.Dispatcher
 
-class DatapointDispatcher extends Logger {
+class DatapointDispatcher extends Logger with Dispatcher {
 
   var socket = None: Option[Socket]
   var graphiteAddress = None: Option[InetSocketAddress]
@@ -43,7 +44,6 @@ class DatapointDispatcher extends Logger {
   // Socket is set as an Scala Option, as we want to be able
   // to choose between two streams. 1= real socket, 2= mock object
   def connect(): Unit = {
-    val timeout = 5000
     socket match {
       case Some(sock) => {
         graphiteAddress match {

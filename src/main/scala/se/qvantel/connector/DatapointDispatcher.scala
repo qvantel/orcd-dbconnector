@@ -16,9 +16,6 @@ class DatapointDispatcher extends Logger with Dispatcher {
 
   var autoSend : Boolean = true
 
-  // Time (in seconds) to wait in between sending the records.
-  val timeStampInterval = 10
-
   // Output metric of how many metrics were send during $timeStampInterval
   var elementsInBatch = 0
 

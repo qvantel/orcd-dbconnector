@@ -74,11 +74,9 @@ class ProcessingManager extends SparkConfig {
 
       cdrFetch match {
         case Success(_) if msgCount > 0  => {
-          //commitBatch(dispatcher, msgCount, lastUpdate.toString)
           updateLatestSync(new DateTime(newestTsMs, DateTimeZone.UTC))
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
-          //dispatcher.append(s"qvantel.dbconnector.throughput.call", throughput.toString, DateTime.now(DateTimeZone.UTC))
         }
         case Success(_) if msgCount == 0  => logger.info("Was not able to fetch any new CDR row from Cassandra")
         case Failure(e) => e.printStackTrace()

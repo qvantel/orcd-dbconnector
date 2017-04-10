@@ -31,7 +31,6 @@ class DatapointDispatcher extends Logger {
   // A map, pointing a destination to an integer. Call append to increment the value.
   var countedRecords =  mutable.HashMap.empty[Destination, CdrCount]
 
-
   // Wrap the objects into their Option and attempt to connect to Carbon
   def init(ip: String, port : Int) : Try[Unit] = {
     socket = Some(new Socket())
@@ -58,12 +57,8 @@ class DatapointDispatcher extends Logger {
     }
   }
 
-  def isTimeToSendRecords(timestamp : Long): Boolean = {
-    if ((timestamp - startIntervalDate) >= timeStampInterval) {
-      true
-    }
-    false
-  }
+  // If the saved timestamp exceeds $timeStampInterval, it's time to send to the metric database.
+  def isTimeToSendRecords(timestamp : Long): Boolean = (timestamp - startIntervalDate) >= timeStampInterval
 
   def sendMetrics(timeStamp: Long) : Unit = {
    startIntervalDate match {

@@ -4,10 +4,6 @@ import org.joda.time.DateTime
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector._
 import se.qvantel.connector.DBConnector.logger
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.concurrent._
-import ExecutionContext.Implicits.global
 
 case class SyncModel(id: Int, ts: DateTime)
 
@@ -17,17 +13,14 @@ trait SyncManager extends SparkConnection {
 
   def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
     this.benchmark = benchmark
-    logger.info("Starting processing of CALLS and PRODUCTS")
-    val pm = new ProcessingManager()
-    val f1 = Future(pm.callProcessing(dispatcher))
-    val f2 = Future(pm.productProcessing(dispatcher))
-
-    // Waiting for just one Future as there is no point running if either product or call fails
-    Await.result(f1, Duration.Inf)
+    logger.info("Starting processing of CDR")
+    new ProcessingManager().cdrProcessing(dispatcher)
   }
 
+  /**
+    * @return 0 -> Posix time , X -> latest date fetched from cassandra
+    */
   def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
-    // refactor to remove 0 and 1 to make it more readable
     rdd.count() match {
       case 0 => 0
       case 1 => {
@@ -39,11 +32,10 @@ trait SyncManager extends SparkConnection {
     }
   }
 
-  def updateLatestSync(tableName: String): Unit = {
+  def updateLatestSync(ts: DateTime): Unit = {
     // Insert current time stamp for syncing here.
     // Insert timestamp always on id=1 to only have one record of a timestamp.
-    val date = DateTime.now()
-    val collection = context.parallelize(Seq(SyncModel(1,date)))
-    collection.saveToCassandra("qvantel", tableName, SomeColumns("id","ts"))
+    val collection = context.parallelize(Seq(SyncModel(1,ts)))
+    collection.saveToCassandra(keySpace, cdrSyncTable, SomeColumns("id","ts"))
   }
 }

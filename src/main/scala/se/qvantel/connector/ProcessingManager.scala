@@ -62,7 +62,7 @@ class ProcessingManager extends SparkConfig {
 
           // Add datapoint to dispatcher
           dispatcher.append(s"qvantel.product.$productName", timeStamp)
-          if (isRoaming && service.equals("voice")) {
+          if (isRoaming) {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", timeStamp)
           }
 

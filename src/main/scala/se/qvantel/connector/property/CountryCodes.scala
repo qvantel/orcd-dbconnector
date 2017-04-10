@@ -6,6 +6,7 @@ import org.json4s.native.JsonMethods._
 import scala.collection.mutable.HashMap
 import java.io.{InputStream}
 
+
 trait CountryCodes extends Config {
   val countriesFile = config.getString("gen.countries.file")
   type MobileCountryCode = String

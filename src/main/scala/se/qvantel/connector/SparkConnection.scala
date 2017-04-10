@@ -4,7 +4,6 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.{SparkConf, SparkContext}
 import se.qvantel.connector.property.SparkConfig
 
-
 trait SparkConnection extends SparkConfig {
   // Configure spark->cassandra connection
   val conf = new SparkConf(true)

@@ -1,6 +1,6 @@
 package se.qvantel.connector
-import property.{CountryCodes, GraphiteConfig, Logger, ProcessingConfig}
 
+import property.{CountryCodes, GraphiteConfig, Logger, ProcessingConfig}
 import scala.util.{Failure, Success}
 
 object DBConnector extends CountryCodes with Logger

@@ -14,12 +14,13 @@ trait SyncManager extends SparkConnection {
   def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
     this.benchmark = benchmark
     logger.info("Starting processing of CDR")
-    val pm = new ProcessingManager()
-    pm.cdrProcessing(dispatcher)
+    new ProcessingManager().cdrProcessing(dispatcher)
   }
 
+  /**
+    * @return 0 -> Posix time , X -> latest date fetched from cassandra
+    */
   def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
-    // refactor to remove 0 and 1 to make it more readable
     rdd.count() match {
       case 0 => 0
       case 1 => {

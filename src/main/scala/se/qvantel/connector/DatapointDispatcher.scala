@@ -2,12 +2,11 @@ package se.qvantel.connector
 
 import java.io._
 import java.net._
-import property.Logger
+import property.{DispatcherConfig, Logger}
 import scala.collection.mutable
 import scala.util.Try
-import se.qvantel.connector.property.Dispatcher
 
-class DatapointDispatcher extends Logger with Dispatcher {
+class DatapointDispatcher extends Logger with DispatcherConfig {
 
   var socket = None: Option[Socket]
   var graphiteAddress = None: Option[InetSocketAddress]

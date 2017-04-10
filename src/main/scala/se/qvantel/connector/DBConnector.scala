@@ -1,10 +1,10 @@
 package se.qvantel.connector
-import property.{CountryCodes, GraphiteConfig, Logger, Processing}
+import property.{CountryCodes, GraphiteConfig, Logger, ProcessingConfig}
 
 import scala.util.{Failure, Success}
 
 object DBConnector extends CountryCodes with Logger
-  with Processing with SyncManager with GraphiteConfig {
+  with ProcessingConfig with SyncManager with GraphiteConfig {
 
   def main(args: Array[String]): Unit = {
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes

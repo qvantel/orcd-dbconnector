@@ -1,5 +1,5 @@
 package se.qvantel.connector.property
 
-trait Dispatcher extends Config{
+trait DispatcherConfig extends Config {
   val timeout = config.getInt("dispatcher.timeout")
 }

@@ -2,7 +2,9 @@ package se.qvantel.connector
 import property.{CountryCodes, Logger, Processing}
 import scala.util.{Failure, Success}
 
-object DBConnector extends CountryCodes with Logger with Processing with SyncManager {
+object
+DBConnector extends CountryCodes with Logger with Processing with SyncManager {
+
 
   def main(args: Array[String]): Unit = {
 

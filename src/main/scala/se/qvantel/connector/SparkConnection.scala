@@ -2,7 +2,7 @@ package se.qvantel.connector
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.{SparkConf, SparkContext}
-
+import com.datastax.spark
 trait SparkConnection {
   // Configure spark->cassandra connection
   val conf = new SparkConf(true)

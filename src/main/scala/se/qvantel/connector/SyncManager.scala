@@ -1,11 +1,10 @@
 package se.qvantel.connector
 import com.datastax.spark.connector.{CassandraRow, SomeColumns}
-import org.joda.time.DateTime
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector._
 import se.qvantel.connector.DBConnector.logger
 
-case class SyncModel(id: Int, ts: DateTime)
+case class SyncModel(id: Int, ts: Long)
 
 trait SyncManager extends SparkConnection {
 
@@ -20,7 +19,7 @@ trait SyncManager extends SparkConnection {
   /**
     * @return 0 -> Posix time , X -> latest date fetched from cassandra
     */
-  def getLatestSyncDate(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
+  def getLatestSync(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
     rdd.count() match {
       case 0 => 0
       case 1 => {
@@ -32,10 +31,10 @@ trait SyncManager extends SparkConnection {
     }
   }
 
-  def updateLatestSync(ts: DateTime): Unit = {
+  def updateLatestSync(tsUs: Long): Unit = {
     // Insert current time stamp for syncing here.
-    // Insert timestamp always on id=1 to only have one record of a timestamp.
-    val collection = context.parallelize(Seq(SyncModel(1,ts)))
-    collection.saveToCassandra(keySpace, cdrSyncTable, SomeColumns("id","ts"))
+    // Insert timestamp always on id=0 to only have one record of a timestamp.
+    val collection = context.parallelize(Seq(SyncModel(0,tsUs)))
+    collection.saveToCassandra(keySpace, cdrSyncTable, SomeColumns("id", "ts"))
   }
 }

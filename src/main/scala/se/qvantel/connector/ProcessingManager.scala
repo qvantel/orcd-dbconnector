@@ -79,7 +79,7 @@ class ProcessingManager extends SparkConfig {
   }
 
   private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Double = {
-    val nanosec = 1000000000
+    val nanosec = 1000000000.0
     val timedelta = (endTime - startTime) / nanosec
     var result = 0.0
     if (timedelta > 0) { // Handle possible division by zero

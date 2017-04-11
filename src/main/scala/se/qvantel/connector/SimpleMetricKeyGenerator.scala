@@ -14,7 +14,7 @@
  * =========================================================================================
  */
 
-package se.qvantel.connector.kamonz
+package se.qvantel.connector
 
 import java.lang.management.ManagementFactory
 

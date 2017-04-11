@@ -3,12 +3,10 @@ import com.datastax.spark.connector._
 import kamon.Kamon
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
-import se.qvantel.connector.property.{CountryCodes, SparkConfig}
+import se.qvantel.connector.property.SparkConfig
 import scala.util.{Failure, Success, Try}
 
 class ProcessingManager extends SparkConfig {
-
-  type GraphiteTable = String
 
   def cdrProcessing(): Unit = {
 
@@ -16,8 +14,6 @@ class ProcessingManager extends SparkConfig {
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     val latestSyncDate = getLatestSyncDate(cdrSync)
     var lastUpdate = 0L
-    //val entityRecorders = Map[GraphiteTable, EntityRecorder]
-
 
     while (true) {
       // Sleep $updateInterval since lastUpdate

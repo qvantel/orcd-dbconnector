@@ -22,6 +22,10 @@ import com.typesafe.config.Config
 import kamon.metric.{Entity, MetricKey, SingleInstrumentEntityRecorder}
 import kamon.statsd.MetricKeyGenerator
 
+/**  Instead of using the default SimpleMetricKeyGenerator where dots are replaced with _
+  *  We use this one where that feature is removed.
+  *  http://kamon.io/documentation/kamon-statsd/0.6.6/overview/
+  */
 
 class SimpleMetricKeyGenerator(config: Config) extends MetricKeyGenerator {
   type Normalizer = String ⇒ String
@@ -32,13 +36,23 @@ class SimpleMetricKeyGenerator(config: Config) extends MetricKeyGenerator {
   val hostnameOverride = configSettings.getString("hostname-override")
   val normalizer = createNormalizer(configSettings.getString("metric-name-normalization-strategy"))
 
-  val normalizedHostname =
-    if (hostnameOverride.equals("none")) normalizer(hostName)
-    else normalizer(hostnameOverride)
+  val normalizedHostname = {
+    if (hostnameOverride.equals("none")) {
+      normalizer(hostName)
+    }
+    else {
+      normalizer(hostnameOverride)
+    }
+  }
 
-  val baseName: String =
-    if (includeHostname) s"$application.$normalizedHostname"
-    else application
+  val baseName: String = {
+    if (includeHostname) {
+      s"$application.$normalizedHostname"
+    }
+    else {
+      application
+    }
+  }
 
   def generateKey(entity: Entity, metricKey: MetricKey): String = entity.category match {
     case "trace-segment" ⇒
@@ -69,8 +83,9 @@ object PercentEncoder {
       if (shouldEncode(character)) {
         encodedString.append('%')
         val charHexValue = Integer.toHexString(character).toUpperCase
-        if (charHexValue.length < 2)
+        if (charHexValue.length < 2) {
           encodedString.append('0')
+        }
 
         encodedString.append(charHexValue)
 
@@ -82,7 +97,11 @@ object PercentEncoder {
   }
 
   def shouldEncode(ch: Char): Boolean = {
-    if (ch > 128 || ch < 0) true
-    else " %$&+,./:;=?@<>#%".indexOf(ch) >= 0;
+    if (ch > 128 || ch < 0){
+      true
+    }
+    else {
+      " %$&+,./:;=?@<>#%".indexOf(ch) >= 0
+    }
   }
 }

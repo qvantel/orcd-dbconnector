@@ -48,7 +48,7 @@ class DatapointDispatcherTest extends FunSuite {
 
     val ts = DateTime.now.getMillis
     dispatcher.append(metric.str, ts)
-    val ts2 = ts + 10000
+    val ts2 = ts + (dispatcher.startIntervalDate * 1000)
     dispatcher.append(metric.str, ts2)
 
     val str = dispatcher.baos match {

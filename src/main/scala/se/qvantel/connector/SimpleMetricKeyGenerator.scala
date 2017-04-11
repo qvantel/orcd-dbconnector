@@ -19,11 +19,9 @@ package se.qvantel.connector.kamonz
 import java.lang.management.ManagementFactory
 
 import com.typesafe.config.Config
-import kamon.metric.{SingleInstrumentEntityRecorder, MetricKey, Entity}
+import kamon.metric.{Entity, MetricKey, SingleInstrumentEntityRecorder}
+import kamon.statsd.MetricKeyGenerator
 
-trait MetricKeyGenerator {
-  def generateKey(entity: Entity, metricKey: MetricKey): String
-}
 
 class SimpleMetricKeyGenerator(config: Config) extends MetricKeyGenerator {
   type Normalizer = String ⇒ String
@@ -58,7 +56,7 @@ class SimpleMetricKeyGenerator(config: Config) extends MetricKeyGenerator {
 
   def createNormalizer(strategy: String): Normalizer = strategy match {
     case "percent-encode" ⇒ PercentEncoder.encode
-    case "normalize"      ⇒ (s: String) ⇒ s.replace(": ", "-").replace(":", "-").replace(" ", "_").replace("/", "_").replace(".", "_")
+    case "normalize"      ⇒ (s: String) ⇒ s.replace(": ", "-").replace(":", "-").replace(" ", "_").replace("/", "_")
   }
 }
 

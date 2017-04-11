@@ -2,7 +2,7 @@ package se.qvantel.connector.property
 
 import org.scalatest.FunSuite
 
-class ProcessingTest extends FunSuite with ProcessingConfig {
+class ProcessingConfigTest extends FunSuite with ProcessingConfig {
 
   test("That a valid processing config exists") {
     assert(batchSize > 0 && batchSize <= 10000)

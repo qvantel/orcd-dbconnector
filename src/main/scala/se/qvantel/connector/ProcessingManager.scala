@@ -16,7 +16,7 @@ class ProcessingManager extends SparkConfig {
 
     while (true) {
       // Sleep $updateInterval since lastUpdate
-      val sleepTime = ((lastUpdateUs/1000) + updateInterval) - System.currentTimeMillis()
+      val sleepTime = ((lastUpdateUs/1000L) + updateInterval) - System.currentTimeMillis()
       if (sleepTime >= 0){
         Thread.sleep(sleepTime)
       }
@@ -37,7 +37,7 @@ class ProcessingManager extends SparkConfig {
 
           val service = row.getString("service")
           val tsUs = row.getLong("created_at")
-          val ts = tsUs/1000000
+          val ts = tsUs/1000000L
           if (tsUs > newestTsUs){
               newestTsUs = tsUs
           }

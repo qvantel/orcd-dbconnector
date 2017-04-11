@@ -11,10 +11,10 @@ trait SyncManager extends SparkConnection {
 
   private var benchmark = false
 
-  def syncLoop(dispatcher: DatapointDispatcher, benchmark: Boolean): Unit = {
+  def syncLoop(benchmark: Boolean): Unit = {
     this.benchmark = benchmark
     logger.info("Starting processing of CDR")
-    new ProcessingManager().cdrProcessing(dispatcher)
+    new ProcessingManager().cdrProcessing()
   }
 
   /**

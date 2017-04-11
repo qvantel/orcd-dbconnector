@@ -25,7 +25,10 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-native" % "3.5.0",
   "com.typesafe" % "config" % "1.3.1",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
+  "io.kamon" %% "kamon-core" % "0.6.6",
+  "io.kamon" %% "kamon-statsd" % "0.6.6",
+  "io.kamon" %% "kamon-log-reporter" % "0.6.6"
 )
 
 // This part is required for spark to assemble

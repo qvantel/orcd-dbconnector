@@ -1,19 +1,23 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
+import kamon.Kamon
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
-import se.qvantel.connector.property.SparkConfig
-
+import se.qvantel.connector.property.{CountryCodes, SparkConfig}
 import scala.util.{Failure, Success, Try}
 
 class ProcessingManager extends SparkConfig {
 
-  def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
+  type GraphiteTable = String
+
+  def cdrProcessing(): Unit = {
 
     val cdrRdd = context.cassandraTable(keySpace, cdrTable)
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     val latestSyncDate = getLatestSyncDate(cdrSync)
     var lastUpdate = 0L
+    //val entityRecorders = Map[GraphiteTable, EntityRecorder]
+
 
     while (true) {
       // Sleep $updateInterval since lastUpdate
@@ -56,11 +60,12 @@ class ProcessingManager extends SparkConfig {
           val aPartyCountryCode = aPartyDestination.substring(0, 3)
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
-          // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.product.$productName", timeStamp)
+          Kamon.metrics.counter(s"product.$productName")
+
           if (isRoaming) {
-            dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", timeStamp)
+            Kamon.metrics.counter(s"$service.destination.$aPartyCountryISO").increment()
           }
+
 
           if (lastUpdate < timeStamp) {
             lastUpdate = timeStamp

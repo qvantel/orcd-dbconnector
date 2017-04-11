@@ -1,31 +1,38 @@
 package se.qvantel.connector
 
+import kamon.Kamon
 import property.{CountryCodes, GraphiteConfig, Logger, ProcessingConfig}
-import scala.util.{Failure, Success}
+
+import scala.util.{Failure, Success, Try}
 
 object DBConnector extends CountryCodes with Logger
   with ProcessingConfig with SyncManager with GraphiteConfig {
 
   def main(args: Array[String]): Unit = {
+
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 
-    val dispatcher = new DatapointDispatcher()
-
-    // checks if the user is running the sync or not.
-    syncStarter(args, dispatcher)
-
-    // Close UDP Connection
-    dispatcher.close()
+    // Make sure Kamon starts
+    Try(Kamon.start()) match {
+      case Success(_) => {
+        logger.info("Kamon started successfully")
+        syncStarter(args)
+      }
+      case Failure(e) => logger.error(e.toString)
+    }
 
     // Stop SparkContext
     context.stop()
 
     // Close cassandra session
     session.close()
+
+    // Close Kamon session
+    Kamon.shutdown()
   }
 
-  def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
+  def syncStarter(arg: Array[String]): Unit = {
     var benchmark = false
     val benchmarkMsg = "--benchmark"
 
@@ -42,10 +49,6 @@ object DBConnector extends CountryCodes with Logger
         }
       }
     }
-    // Attempt Connection to Carbon
-    dispatcher.init(graphiteHost, graphitePort) match {
-      case Success(_) => syncLoop(dispatcher, benchmark)
-      case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
-    }
+    syncLoop(benchmark)
   }
 }

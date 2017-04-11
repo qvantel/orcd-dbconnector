@@ -8,6 +8,9 @@ import org.scalatest.FunSuite
 case class Metric(str: String, ts : Long)
 
 class DatapointDispatcherTest extends FunSuite {
+
+  // Leaving this commented in case we might need it
+  /*
   test("Test dispatching metrics to a mock-up stream") {
     val dispatcher = new DatapointDispatcher()
     dispatcher.disableAutoSend()
@@ -62,4 +65,5 @@ class DatapointDispatcherTest extends FunSuite {
 
     assert(str(0).equals(s"${destination} 2 ${ts}"))
   }
+  */
 }

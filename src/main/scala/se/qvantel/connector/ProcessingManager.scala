@@ -57,9 +57,11 @@ class ProcessingManager extends SparkConfig {
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           Kamon.metrics.counter(s"product.$productName")
+            .increment()
 
           if (isRoaming) {
-            Kamon.metrics.counter(s"$service.destination.$aPartyCountryISO").increment()
+            Kamon.metrics.counter(s"$service.destination.$aPartyCountryISO")
+              .increment()
           }
 
 

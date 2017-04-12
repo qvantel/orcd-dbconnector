@@ -1,12 +1,13 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
+import com.typesafe.scalalogging.LazyLogging
 import kamon.Kamon
 import org.joda.time.DateTime
 import se.qvantel.connector.DBConnector._
 import se.qvantel.connector.property.SparkConfig
 import scala.util.{Failure, Success, Try}
 
-class ProcessingManager extends SparkConfig {
+class ProcessingManager extends SparkConfig with LazyLogging {
 
   def cdrProcessing(): Unit = {
 

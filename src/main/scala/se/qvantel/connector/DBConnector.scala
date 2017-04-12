@@ -1,11 +1,12 @@
 package se.qvantel.connector
 
+import com.typesafe.scalalogging.LazyLogging
 import kamon.Kamon
-import property.{CountryCodes, GraphiteConfig, Logger, ProcessingConfig}
+import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
 
 import scala.util.{Failure, Success, Try}
 
-object DBConnector extends CountryCodes with Logger
+object DBConnector extends CountryCodes with LazyLogging
   with ProcessingConfig with SyncManager with GraphiteConfig {
 
   def main(args: Array[String]): Unit = {

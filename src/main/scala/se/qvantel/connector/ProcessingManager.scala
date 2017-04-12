@@ -54,11 +54,11 @@ class ProcessingManager extends SparkConfig with LazyLogging {
           val aPartyCountryCode = aPartyDestination.substring(0, 3)
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
-          Kamon.metrics.counter(s"product.$productName")
+          Kamon.metrics.counter(s"product.$service.$productName")
             .increment()
 
           if (isRoaming) {
-            Kamon.metrics.counter(s"$service.destination.$aPartyCountryISO")
+            Kamon.metrics.counter(s"call.$service.destination.$aPartyCountryISO")
               .increment()
           }
 
@@ -69,7 +69,6 @@ class ProcessingManager extends SparkConfig with LazyLogging {
       }
 
       cdrFetch match {
-
         case Success(_) if msgCount > 0 => {
           updateLatestSync(newestTsUs)
           val endTime = System.nanoTime()

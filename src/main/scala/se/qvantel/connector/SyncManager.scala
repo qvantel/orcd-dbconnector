@@ -9,6 +9,7 @@ case class SyncModel(id: Int, ts: Long)
 trait SyncManager extends SparkConnection with LazyLogging {
 
   private var benchmark = false
+  type CassandraRDD = CassandraTableScanRDD[CassandraRow]
 
   def syncLoop(benchmark: Boolean): Unit = {
     this.benchmark = benchmark
@@ -19,7 +20,7 @@ trait SyncManager extends SparkConnection with LazyLogging {
   /**
     * @return 0 -> Posix time , X -> latest date fetched from cassandra
     */
-  def getLatestSync(rdd: CassandraTableScanRDD[CassandraRow]): Long = {
+  def getLatestSync(rdd: CassandraRDD): Long = {
     rdd.count() match {
       case 0 => 0
       case 1 => {

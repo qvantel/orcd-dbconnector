@@ -54,7 +54,7 @@ class ProcessingManager extends SparkConfig {
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.product.$productName", ts)
+          dispatcher.append(s"qvantel.product.$service.$productName", ts)
           if (isRoaming) {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", ts)
           }

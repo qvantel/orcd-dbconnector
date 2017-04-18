@@ -17,7 +17,6 @@
 package se.qvantel.connector
 
 import java.lang.management.ManagementFactory
-
 import com.typesafe.config.Config
 import kamon.metric.{Entity, MetricKey, SingleInstrumentEntityRecorder}
 import kamon.statsd.MetricKeyGenerator

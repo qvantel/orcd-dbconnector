@@ -3,7 +3,6 @@ package se.qvantel.connector
 import com.typesafe.scalalogging.LazyLogging
 import kamon.Kamon
 import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
-
 import scala.util.{Failure, Success, Try}
 
 object DBConnector extends CountryCodes with LazyLogging

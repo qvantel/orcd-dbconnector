@@ -29,7 +29,11 @@ libraryDependencies ++= Seq(
 
   //Test Dependencies
   "com.datastax.spark" %% "spark-cassandra-connector-embedded" % "2.0.1",
-  "com.holdenkarau" %% "spark-testing-base" % "1.6.1_0.3.3"
+  "com.holdenkarau" %% "spark-testing-base" % "1.6.1_0.3.3",
+  // https://mvnrepository.com/artifact/org.cassandraunit/cassandra-unit
+  "org.cassandraunit" % "cassandra-unit" % "1.2.0.1",
+  "net.jcazevedo" %% "moultingyaml" % "0.4.0"
+
 )
 
 // This part is required for spark to assemble

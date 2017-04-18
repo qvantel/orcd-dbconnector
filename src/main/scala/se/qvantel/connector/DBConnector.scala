@@ -9,7 +9,6 @@ object DBConnector extends CountryCodes with LazyLogging
   with ProcessingConfig with SyncManager with GraphiteConfig {
 
   def main(args: Array[String]): Unit = {
-
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 

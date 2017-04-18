@@ -10,7 +10,6 @@ import scala.util.{Failure, Success, Try}
 class ProcessingManager extends SparkConfig with LazyLogging {
 
   def cdrProcessing(): Unit = {
-
     val cdrRdd = context.cassandraTable(keySpace, cdrTable)
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     var lastUpdateUs = getLatestSync(cdrSync)
@@ -27,7 +26,6 @@ class ProcessingManager extends SparkConfig with LazyLogging {
 
       // Reset loop variables
       var msgCount = 0
-      val startTime = System.nanoTime()
       var newestTsUs = 0L
       val cdrFetch = Try {
         cdrRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
@@ -69,26 +67,11 @@ class ProcessingManager extends SparkConfig with LazyLogging {
       }
 
       cdrFetch match {
-        case Success(_) if msgCount > 0 => {
-          updateLatestSync(newestTsUs)
-          val endTime = System.nanoTime()
-          val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
-        }
+        case Success(_) if msgCount > 0 => updateLatestSync(newestTsUs)
         case Success(_) if msgCount == 0 => logger.info("Was not able to fetch any new CDR row from Cassandra")
         case Failure(e) => e.printStackTrace()
       }
     }
   }
 
-  private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Double = {
-    val nanosec = 1000000000.0
-    val timedelta = (endTime - startTime) / nanosec
-    var result = 0.0
-    if (timedelta > 0) { // Handle possible division by zero
-      result = msgCounter / timedelta
-    }
-
-    logger.info(result + " cdrs/second")
-    result
-  }
 }

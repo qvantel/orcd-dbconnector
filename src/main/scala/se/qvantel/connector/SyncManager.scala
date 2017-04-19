@@ -1,12 +1,13 @@
 package se.qvantel.connector
+
 import com.datastax.spark.connector.{CassandraRow, SomeColumns}
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector._
-import se.qvantel.connector.DBConnector.logger
+import com.typesafe.scalalogging.LazyLogging
 
 case class SyncModel(id: Int, ts: Long)
 
-trait SyncManager extends SparkConnection {
+trait SyncManager extends SparkConnection with LazyLogging {
 
   private var benchmark = false
 

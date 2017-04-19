@@ -1,15 +1,15 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
-import org.joda.time.{DateTime, DateTimeZone}
+import com.typesafe.scalalogging.LazyLogging
+import org.joda.time.DateTime
 import se.qvantel.connector.DBConnector._
 import se.qvantel.connector.property.SparkConfig
 
 import scala.util.{Failure, Success, Try}
 
-class ProcessingManager extends SparkConfig {
+class ProcessingManager extends SparkConfig with LazyLogging {
 
   def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
-
     val cdrRdd = context.cassandraTable(keySpace, cdrTable)
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     var lastUpdateUs = getLatestSync(cdrSync)
@@ -37,7 +37,7 @@ class ProcessingManager extends SparkConfig {
 
           val service = row.getString("service")
           val tsUs = row.getLong("created_at")
-          val ts = tsUs/1000000
+          val ts = tsUs/1000000L
           if (tsUs > newestTsUs){
               newestTsUs = tsUs
           }
@@ -54,7 +54,7 @@ class ProcessingManager extends SparkConfig {
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.product.$productName", ts)
+          dispatcher.append(s"qvantel.product.$service.$productName", ts)
           if (isRoaming) {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", ts)
           }
@@ -66,8 +66,7 @@ class ProcessingManager extends SparkConfig {
       }
 
       cdrFetch match {
-
-        case Success(_) if msgCount > 0 => {
+        case Success(_) if msgCount > 0 =>  {
           updateLatestSync(newestTsUs)
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
@@ -89,4 +88,5 @@ class ProcessingManager extends SparkConfig {
     logger.info(result + " cdrs/second")
     result
   }
+
 }

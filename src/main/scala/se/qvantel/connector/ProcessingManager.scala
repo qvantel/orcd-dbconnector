@@ -36,7 +36,7 @@ class ProcessingManager extends SparkConfig {
 
           val service = row.getString("service")
           val tsUs = row.getLong("created_at")
-          val ts = tsUs/1000000
+          val ts = tsUs/1000000L
           if (tsUs > newestTsUs){
               newestTsUs = tsUs
           }
@@ -53,7 +53,7 @@ class ProcessingManager extends SparkConfig {
           val aPartyCountryISO = countries(aPartyCountryCode) // Map MCC to country ISO code (such as "se", "dk" etc.)
 
           // Add datapoint to dispatcher
-          dispatcher.append(s"qvantel.product.$productName", ts)
+          dispatcher.append(s"qvantel.product.$service.$productName", ts)
           if (isRoaming) {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", ts)
           }

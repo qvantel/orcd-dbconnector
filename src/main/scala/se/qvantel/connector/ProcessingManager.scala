@@ -1,15 +1,15 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
-import org.joda.time.{DateTime, DateTimeZone}
+import com.typesafe.scalalogging.LazyLogging
+import org.joda.time.DateTime
 import se.qvantel.connector.DBConnector._
 import se.qvantel.connector.property.SparkConfig
 
 import scala.util.{Failure, Success, Try}
 
-class ProcessingManager extends SparkConfig {
+class ProcessingManager extends SparkConfig with LazyLogging {
 
   def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
-
     val cdrRdd = context.cassandraTable(keySpace, cdrTable)
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     var lastUpdateUs = getLatestSync(cdrSync)

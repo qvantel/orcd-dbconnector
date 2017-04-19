@@ -1,9 +1,10 @@
 package se.qvantel.connector
 
-import property.{CountryCodes, GraphiteConfig, Logger, ProcessingConfig}
+import com.typesafe.scalalogging.LazyLogging
+import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
 import scala.util.{Failure, Success}
 
-object DBConnector extends CountryCodes with Logger
+object DBConnector extends CountryCodes with LazyLogging
   with ProcessingConfig with SyncManager with GraphiteConfig {
 
   def main(args: Array[String]): Unit = {

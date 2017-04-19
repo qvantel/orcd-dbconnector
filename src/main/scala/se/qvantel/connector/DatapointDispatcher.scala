@@ -2,11 +2,12 @@ package se.qvantel.connector
 
 import java.io._
 import java.net._
-import property.{DispatcherConfig, Logger}
+import com.typesafe.scalalogging.LazyLogging
+import property.DispatcherConfig
 import scala.collection.mutable
 import scala.util.Try
 
-class DatapointDispatcher extends Logger with DispatcherConfig {
+class DatapointDispatcher extends LazyLogging with DispatcherConfig {
 
   var socket = None: Option[Socket]
   var graphiteAddress = None: Option[InetSocketAddress]

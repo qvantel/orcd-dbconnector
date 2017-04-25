@@ -32,10 +32,10 @@ trait SyncManager extends SparkConnection with LazyLogging {
     }
   }
 
-  def updateLatestSync(tsUs: Long): Unit = {
+  def updateLatestSync(tsNs: Long): Unit = {
     // Insert current time stamp for syncing here.
     // Insert timestamp always on id=0 to only have one record of a timestamp.
-    val collection = context.parallelize(Seq(SyncModel(0,tsUs)))
+    val collection = context.parallelize(Seq(SyncModel(0,tsNs)))
     collection.saveToCassandra(keySpace, cdrSyncTable, SomeColumns("id", "ts"))
   }
 }

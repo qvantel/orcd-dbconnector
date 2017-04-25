@@ -12,34 +12,34 @@ class ProcessingManager extends SparkConfig with LazyLogging {
   def cdrProcessing(dispatcher: DatapointDispatcher): Unit = {
     val cdrRdd = context.cassandraTable(keySpace, cdrTable)
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
-    var lastUpdateUs = getLatestSync(cdrSync)
+    var lastUpdateNs = getLatestSync(cdrSync)
 
     while (true) {
-      // Sleep $updateInterval since lastUpdate
-      val sleepTime = ((lastUpdateUs/1000) + updateInterval) - System.currentTimeMillis()
+      // Sleep if lastUpdate was not back-in-time
+      val sleepTime = ((lastUpdateNs/1000000L) + updateInterval) - System.currentTimeMillis()
       if (sleepTime >= 0){
         Thread.sleep(sleepTime)
       }
 
-      val lastUpdateDate = new DateTime(lastUpdateUs/1000L)
+      val lastUpdateDate = new DateTime(lastUpdateNs/1000000L)
       logger.info(s"Syncing CDR's since $lastUpdateDate")
 
       // Reset loop variables
       var msgCount = 0
       val startTime = System.nanoTime()
-      var newestTsUs = 0L
+      var newestTsNs = 0L
       val cdrFetch = Try {
         cdrRdd.select("created_at", "event_details", "service", "used_service_units", "event_charges")
-          .where("created_at > ?", lastUpdateUs).where("clustering_key=0").clusteringOrder(rdd.ClusteringOrder.Ascending)
+          .where("created_at > ?", lastUpdateNs).where("clustering_key=0").clusteringOrder(rdd.ClusteringOrder.Ascending)
           .limit(fetchBatchSize).collect().foreach(row => {
 
           msgCount += 1
 
           val service = row.getString("service")
-          val tsUs = row.getLong("created_at")
-          val ts = tsUs/1000000L
-          if (tsUs > newestTsUs){
-              newestTsUs = tsUs
+          val tsNs = row.getLong("created_at")
+          val ts = tsNs/1000000000L
+          if (tsNs > newestTsNs){
+              newestTsNs = tsNs
           }
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")
@@ -59,15 +59,15 @@ class ProcessingManager extends SparkConfig with LazyLogging {
             dispatcher.append(s"qvantel.call.$service.destination.$aPartyCountryISO", ts)
           }
 
-          if (lastUpdateUs < tsUs) {
-            lastUpdateUs = tsUs
+          if (lastUpdateNs < tsNs) {
+            lastUpdateNs = tsNs
           }
         })
       }
 
       cdrFetch match {
         case Success(_) if msgCount > 0 =>  {
-          updateLatestSync(newestTsUs)
+          updateLatestSync(newestTsNs)
           val endTime = System.nanoTime()
           val throughput = measureDataSendPerSecond(startTime, endTime, msgCount)
         }
@@ -88,5 +88,4 @@ class ProcessingManager extends SparkConfig with LazyLogging {
     logger.info(result + " cdrs/second")
     result
   }
-
 }

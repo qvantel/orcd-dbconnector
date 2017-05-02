@@ -3,8 +3,10 @@ import com.datastax.spark.connector._
 import org.joda.time.{DateTime, DateTimeZone}
 import se.qvantel.connector.DBConnector._
 import scala.util.{Failure, Random, Success, Try}
+import se.qvantel.connector
+import se.qvantel.connector.property.Processing
 
-class ProcessingManager {
+class ProcessingManager extends Processing {
 
   def callProcessing(dispatcher: DatapointDispatcher): Unit = {
 
@@ -12,8 +14,11 @@ class ProcessingManager {
     val callSync = context.cassandraTable("qvantel", "callsync")
     val latestSyncDate = getLatestSyncDate(callSync)
     var lastUpdate = new DateTime (latestSyncDate)
+    var current = 0
 
-    while (true) {
+    while (current <= limit) {
+      current = current + 1;
+
       // Sleep $updateInterval since lastUpdate
       val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
       if (sleepTime >= 0){
@@ -83,8 +88,10 @@ class ProcessingManager {
     val productSync = context.cassandraTable("qvantel", "productsync")
     val latestSyncDate = getLatestSyncDate(productSync)
     var lastUpdate = new DateTime(latestSyncDate)
+    var current = 0
 
-    while (true) {
+    while (current <= limit) {
+      current = current + 1
       // Sleep $updateInterval since lastUpdate
       val sleepTime = lastUpdate.getMillis() + updateInterval - DateTime.now(DateTimeZone.UTC).getMillis()
       if (sleepTime >= 0) {

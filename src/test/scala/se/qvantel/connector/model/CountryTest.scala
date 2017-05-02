@@ -4,7 +4,6 @@ import org.json4s.DefaultFormats
 import org.scalatest.FunSuite
 import org.json4s.native.JsonMethods._
 
-
 class CountryTest extends FunSuite {
 
   test("Test parsing of JSON-string to model.Country case class") {

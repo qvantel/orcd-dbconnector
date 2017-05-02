@@ -1,23 +1,23 @@
 package se.qvantel.connector
-import property.{CountryCodes, Logger, Processing}
+
+import com.typesafe.scalalogging.{LazyLogging, Logger}
+import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
+
+import scala.tools.nsc.interpreter.session
 import scala.util.{Failure, Success}
 
-object
-DBConnector extends CountryCodes with Logger with Processing with SyncManager {
+object DBConnector extends CountryCodes with LazyLogging
+  with ProcessingConfig with SyncManager with GraphiteConfig with SparkConnection{
 
 
   def main(args: Array[String]): Unit = {
-
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes
     getCountriesByMcc()
 
-    val graphiteIP = "localhost"
-    val graphitePort = 2003
+    val dispatcher = new DatapointDispatcher()
 
-    val dispatcher = new DatapointDispatcher(graphiteIP, graphitePort)
-
-    // checks if the user is running the benchmark or not
-    benchmarkChecker(args, dispatcher)
+    // checks if the user is running the sync or not.
+    syncStarter(args, dispatcher)
 
     // Close UDP Connection
     dispatcher.close()
@@ -29,23 +29,25 @@ DBConnector extends CountryCodes with Logger with Processing with SyncManager {
     session.close()
   }
 
-  def commitBatch(dispatcher: DatapointDispatcher, msgCount: Int): Unit = {
-    dispatcher.dispatch()
-    logger.info(s"Sent a total of $msgCount datapoints to carbon this iteration")
-  }
-
-  def benchmarkChecker(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
+  def syncStarter(arg: Array[String], dispatcher: DatapointDispatcher): Unit = {
     var benchmark = false
+    val benchmarkMsg = "--benchmark"
+
     if (arg.length > 0) {
       arg(0) match {
-        case "--benchmark" =>
-          logger.info("benchmark is activated.")
+        case `benchmarkMsg` => {
+          val benchmarkActivatingMsg = "benchmark is activated!"
+          logger.info(benchmarkActivatingMsg)
           benchmark = true
-        case _ => logger.info("the arguments were wrong, ->try --benchmark")
+        }
+        case _ => {
+          val errorArgsMsg = "the arguments were wrong, ->try --benchmark"
+          logger.info(errorArgsMsg)
+        }
       }
     }
     // Attempt Connection to Carbon
-    dispatcher.connect() match {
+    dispatcher.init(graphiteHost, graphitePort) match {
       case Success(_) => syncLoop(dispatcher, benchmark)
       case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
     }

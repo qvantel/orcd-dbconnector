@@ -2,13 +2,15 @@ package se.qvantel.connector
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.{SparkConf, SparkContext}
-import com.datastax.spark
-trait SparkConnection {
+import se.qvantel.connector.property.SparkConfig
+
+trait SparkConnection extends SparkConfig {
   // Configure spark->cassandra connection
   val conf = new SparkConf(true)
-    .set("spark.cassandra.connection.host", "127.0.0.1")
-    .set("spark.cassandra.auth.username", "cassandra")
-    .set("spark.cassandra.auth.password", "cassandra")
+    .set("spark.cassandra.connection.host", hostName)
+    .set("spark.cassandra.auth.username", userName)
+    .set("spark.cassandra.auth.password", password)
+    .set("spark.cassandra.connection.port", cassandraPort)
   val context = new SparkContext("local[2]", "database", conf)
 
   // Setup cassandra connector
@@ -17,6 +19,6 @@ trait SparkConnection {
   val session = connector.openSession()
 
   // create new tables for syncing
-  session.execute("CREATE TABLE IF NOT EXISTS qvantel.callsync(id INT PRIMARY KEY, ts timestamp)")
-  session.execute("CREATE TABLE IF NOT EXISTS qvantel.productsync(id INT PRIMARY KEY, ts timestamp)")
+  session.execute("CREATE TABLE IF NOT EXISTS " + keySpace + "." + cdrSyncTable + "(id INT PRIMARY KEY, ts bigint)")
 }
+

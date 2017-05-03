@@ -26,7 +26,9 @@ class DatapointDispatcherTest extends FunSuite {
     )
 
     foo.foreach(metric => dispatcher.append(metric.str, metric.ts))
-    dispatcher.dispatch(timeStamp)
+    if (dispatcher.dispatch(timeStamp).isFailure) {
+      fail("Dispatch failed")
+    }
 
     val str = dispatcher.baos match {
       case Some(b) => {

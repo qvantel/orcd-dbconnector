@@ -3,57 +3,44 @@ package se.qvantel.connector
 import java.io._
 import java.net._
 import com.typesafe.scalalogging.LazyLogging
-import property.DispatcherConfig
+import property.{DispatcherConfig, GraphiteConfig}
 import scala.collection.mutable
 import scala.util.Try
 
-class DatapointDispatcher extends LazyLogging with DispatcherConfig {
-  var socket = None: Option[Socket]
-  var graphiteAddress = None: Option[InetSocketAddress]
+class DatapointDispatcher extends LazyLogging with DispatcherConfig with GraphiteConfig {
   var baos = None: Option[ByteArrayOutputStream]
   var startIntervalDate = 0L
 
   // Used for unit tests, to disable side effects
-  var autoSend : Boolean = true
+  // If true, then normal sockets are used
+  var autoSend: Boolean = true
 
   type CdrCount = Int
   type Destination = String
   // A map, pointing a destination to an integer. Call append to increment the value.
-  var countedRecords =  mutable.HashMap.empty[Destination, CdrCount]
-
-  // Wrap the objects into their Option and attempt to connect to Carbon
-  def init(ip: String, port : Int) : Try[Unit] = {
-    socket = Some(new Socket())
-    graphiteAddress = Some(new InetSocketAddress(ip, port))
-    Try(connect())
-  }
+  var countedRecords = mutable.HashMap.empty[Destination, CdrCount]
 
   def disableAutoSend(): Unit = autoSend = false
 
-  // Socket is set as an Scala Option, as we want to be able
-  // to choose between two streams. 1= real socket, 2= mock object
-  def connect(): Unit = {
-    socket match {
-      case Some(sock) => {
-        graphiteAddress match {
-          case Some(addr) => sock.connect(addr, timeout)
-          case None => logger.error("Graphite address not set")
-        }
-      }
-      case None => logger.info("Socket did not get initialized")
-    }
-  }
+  def connect(): Option[Socket] = Try {
+    val graphiteAddress = new InetSocketAddress(graphiteHost, graphitePort)
+    val sock = new Socket()
+    sock.connect(graphiteAddress)
+    sock
+  }.toOption
 
   // If the saved timestamp exceeds $timeStampInterval, it's time to send to the metric database.
-  def isTimeToSendRecords(timestamp : Long): Boolean =
+  def isTimeToSendRecords(timestamp: Long): Boolean =
     (timestamp - startIntervalDate) >= timeStampInterval
 
-  def sendMetrics(timeStamp: Long) : Unit = {
-   startIntervalDate match {
+  def sendMetrics(timeStamp: Long): Unit = {
+    startIntervalDate match {
       case 0L => startIntervalDate = timeStamp
       case _ => {
         if (autoSend && isTimeToSendRecords(timeStamp)) {
-          dispatch(startIntervalDate)
+          if (dispatch(startIntervalDate).isFailure && autoSend) {
+            graphiteReconnectionLoop()
+          }
           countedRecords.clear()
           startIntervalDate = timeStamp
         }
@@ -63,7 +50,7 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig {
 
   // OutputStream for socket, ByteArrayOutputStream for unit testing
   def getStream: Either[OutputStream, ByteArrayOutputStream] = {
-    socket match {
+    connect match {
       case None => Right(new ByteArrayOutputStream())
       case Some(sock) => Left(sock.getOutputStream)
     }
@@ -75,26 +62,42 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig {
     }
     countedRecords.put(destination, countedRecords(destination) + 1)
 
-    // See if need to send metrics
     sendMetrics(timeStamp)
   }
 
-  def dispatch(ts: Long): Unit = {
-    // Socket output stream
-    val out = getStream match {
-      case Left(outputStream) => new PrintStream(outputStream)
-      case Right(byteArrayOutputStream) => {
-        baos = Some(byteArrayOutputStream)
+  def dispatch(ts: Long): Try[Unit] = Try {
+    val sockOpt = connect().headOption
+
+    val stream = autoSend match {
+      case true => new PrintStream(sockOpt.map(_.getOutputStream).head)
+      case false => {
+        baos = Some(new ByteArrayOutputStream())
         new PrintStream(baos.get)
       }
     }
     // Send payload
-    val payload = countedRecords.map(p => s"${p._1} ${p._2.toString} ${ts} ")
+    val payload = countedRecords.map(p => s"${p._1} ${p._2.toString} $ts ")
       .mkString("\n")
 
-    out.print(payload)
+    stream.print(payload)
+
+    // Kill socket connection
+    sockOpt.foreach(_.close())
   }
 
-  def close(): Unit = socket.foreach(_.close())
+  private def graphiteReconnectionLoop(): Unit = {
+    var connected = false
+
+    while(!connected) {
+      Thread.sleep(10000)
+      connect match {
+        case Some(sock) => {
+          connected = true
+          sock.close()
+        }
+        case None => logger.info(connectionFailureMsg + ", will attempt again in 10 seconds")
+      }
+    }
+  }
 
 }

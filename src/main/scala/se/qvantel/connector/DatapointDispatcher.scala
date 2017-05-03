@@ -48,14 +48,6 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig with Graphit
     }
   }
 
-  // OutputStream for socket, ByteArrayOutputStream for unit testing
-  def getStream: Either[OutputStream, ByteArrayOutputStream] = {
-    connect match {
-      case None => Right(new ByteArrayOutputStream())
-      case Some(sock) => Left(sock.getOutputStream)
-    }
-  }
-
   def append(destination: String, timeStamp: Long): Unit = {
     if (!countedRecords.contains(destination)) {
       countedRecords.put(destination, 0)

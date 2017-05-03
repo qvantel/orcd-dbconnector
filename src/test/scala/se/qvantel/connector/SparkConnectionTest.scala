@@ -9,14 +9,14 @@ import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class SparkConnectionTest extends CassandraEmbedded {
 
-  var sc: SparkContext = null
-
-
-  val embCasPort = EmbeddedCassandra.getPort(0)
-  val embCasHost = EmbeddedCassandra.getHost(0)
-  println("----embCasPort----->" + embCasPort)
-  println("----embCasHost----->" + embCasHost)
-    val name = "sparkTtest"
+//  var sc: SparkContext = null
+//
+//
+//  val embCasPort = EmbeddedCassandra.getPort(0)
+//  val embCasHost = EmbeddedCassandra.getHost(0)
+//  println("----embCasPort----->" + embCasPort)
+//  println("----embCasHost----->" + embCasHost)
+//    val name = "sparkTtest"
 
 //    val conf = new SparkConf()
 //      .setAppName(name)

@@ -8,12 +8,12 @@ import scala.collection.mutable
 import scala.util.Try
 
 class DatapointDispatcher extends LazyLogging with DispatcherConfig with GraphiteConfig {
-  var baos = None: Option[ByteArrayOutputStream]
   var startIntervalDate = 0L
 
   // Used for unit tests, to disable side effects
   // If true, then normal sockets are used
   var autoSend: Boolean = true
+  var baos = None: Option[ByteArrayOutputStream]
 
   type CdrCount = Int
   type Destination = String
@@ -38,7 +38,7 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig with Graphit
       case 0L => startIntervalDate = timeStamp
       case _ => {
         if (autoSend && isTimeToSendRecords(timeStamp)) {
-          if (dispatch(startIntervalDate).isFailure && autoSend) {
+          if (dispatch(startIntervalDate).isFailure) {
             graphiteReconnectionLoop()
           }
           countedRecords.clear()
@@ -82,7 +82,7 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig with Graphit
 
     while(!connected) {
       Thread.sleep(10000)
-      connect match {
+      connect() match {
         case Some(sock) => {
           connected = true
           sock.close()

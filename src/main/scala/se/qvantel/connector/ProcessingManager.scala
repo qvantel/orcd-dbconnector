@@ -15,9 +15,9 @@ class ProcessingManager extends SparkConfig with LazyLogging {
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     var lastUpdateNs = getLatestSync(cdrSync)
 
-    // this counter is to limit the numbers of the while loop if integration tase is active
+    // this counter is to limit the numbers of the while loop if integration test is active.
     var counter = 0
-    var theLimit = ConfigFactory.load().getInt("processing.theLimit")
+    var theLimit = ConfigFactory.load().getInt("theLimit")
 
     while (counter <= theLimit || theLimit == -1) {
 

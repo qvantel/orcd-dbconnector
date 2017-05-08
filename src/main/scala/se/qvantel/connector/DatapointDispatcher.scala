@@ -81,13 +81,14 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig with Graphit
     var connected = false
 
     while(!connected) {
-      Thread.sleep(10000)
+      Thread.sleep(graphiteTimeoutReconnectionMs)
       connect() match {
         case Some(sock) => {
           connected = true
           sock.close()
         }
-        case None => logger.info(connectionFailureMsg + ", will attempt again in 10 seconds")
+        case None => logger.info(connectionFailureMsg +
+          ", will attempt again in " + graphiteTimeoutReconnectionMs/1000 + "seconds")
       }
     }
   }

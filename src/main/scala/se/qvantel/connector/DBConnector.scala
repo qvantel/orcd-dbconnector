@@ -42,7 +42,6 @@ object DBConnector extends CountryCodes with LazyLogging
     }
 
     // Check if connection to Carbon is possible,
-    // otherwise close system down
     dispatcher.connect match {
       case Some(s) => {
         s.close()

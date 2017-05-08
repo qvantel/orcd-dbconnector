@@ -16,8 +16,10 @@ cache:
     - $HOME/.sbt/boot/
     - $HOME/.m2/repository
 
-
 after_success:
   - find $HOME/.sbt -name "*.lock" | xargs rm
   - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
   - test $TRAVIS_BRANCH = "master" && ./trigger_core_repo_build.sh
+
+before_script:
+  - sudo chmod +x /usr/local/bin/sbt

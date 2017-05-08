@@ -4,6 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
 import se.qvantel.connector.DBConnector._
 import se.qvantel.connector.property.SparkConfig
+import scala.math.ceil
 
 import scala.util.{Failure, Success, Try}
 
@@ -78,11 +79,11 @@ class ProcessingManager extends SparkConfig with LazyLogging {
   }
 
   private def measureDataSendPerSecond(startTime: Long, endTime: Long, msgCounter: Int): Double = {
-    val nanosec = 1000000000
+    val nanosec = 1000000000.0
     val timedelta = (endTime - startTime) / nanosec
     var result = 0.0
     if (timedelta > 0) { // Handle possible division by zero
-      result = msgCounter / timedelta
+      result = ceil(msgCounter / timedelta)
     }
 
     logger.info(result + " cdrs/second")

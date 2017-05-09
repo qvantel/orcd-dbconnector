@@ -4,6 +4,13 @@
 ## Description
 This service is used to fetch data from Cassandra using Spark and sending it to Graphite using an UDP connection.
 
+## Changing configuration
+The application configuration file can be found at:
+```
+/src/main/resources/application.conf
+```
+You can change settings such as Cassandra IP, batch size and update interval.
+
 ## Usage
 Run DBConnector:
 ```

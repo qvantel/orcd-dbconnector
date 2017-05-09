@@ -25,15 +25,7 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-native" % "3.5.0",
   "com.typesafe" % "config" % "1.3.1",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
-
-  //Test Dependencies
-  "com.datastax.spark" %% "spark-cassandra-connector-embedded" % "2.0.1",
-  "com.holdenkarau" %% "spark-testing-base" % "1.6.1_0.3.3",
-  // https://mvnrepository.com/artifact/org.cassandraunit/cassandra-unit
-  "org.cassandraunit" % "cassandra-unit" % "1.2.0.1",
-  "net.jcazevedo" %% "moultingyaml" % "0.4.0"
-
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
 )
 
 // This part is required for spark to assemble

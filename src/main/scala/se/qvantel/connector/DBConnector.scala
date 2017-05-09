@@ -2,8 +2,6 @@ package se.qvantel.connector
 
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
-
-import scala.tools.nsc.interpreter.session
 import scala.util.{Failure, Success}
 
 object DBConnector extends CountryCodes with LazyLogging

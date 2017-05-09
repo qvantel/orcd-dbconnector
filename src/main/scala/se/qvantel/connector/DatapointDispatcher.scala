@@ -29,6 +29,7 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig {
 
   // Wrap the objects into their Option and attempt to connect to Carbon
   def init(ip: String, port : Int) : Try[Unit] = {
+    logger.info(s"Creating a connection with $ip : $port")
     socket = Some(new Socket())
     graphiteAddress = Some(new InetSocketAddress(ip, port))
     Try(connect())

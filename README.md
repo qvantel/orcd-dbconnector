@@ -3,7 +3,7 @@
 
 # DBConnector
 ## Description
-This program is used to fetch data from Cassandra using Spark and sending it to Graphite over UDP.
+This program is used to fetch data from Cassandra using Spark Cassandra Connector and sending it to Graphite over TCP.
 
 ## Changing configuration
 The application configuration file can be found at:

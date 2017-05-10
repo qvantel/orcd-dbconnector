@@ -17,9 +17,6 @@ object DBConnector extends CountryCodes with LazyLogging
     // checks if the user is running the sync or not.
     syncStarter(args, dispatcher)
 
-    // Close UDP Connection
-    dispatcher.close()
-
     // Stop SparkContext
     context.stop()
 
@@ -44,10 +41,14 @@ object DBConnector extends CountryCodes with LazyLogging
         }
       }
     }
-    // Attempt Connection to Carbon
-    dispatcher.init(graphiteHost, graphitePort) match {
-      case Success(_) => syncLoop(dispatcher, benchmark)
-      case Failure(e) => logger.info(Console.RED + "Failed to setup UDP socket for Carbon, Error: " + e.toString + Console.RESET)
+
+    // Check if connection to Carbon is possible
+    dispatcher.connect match {
+      case Some(s) => {
+        s.close()
+        syncLoop(dispatcher, benchmark)
+      }
+      case None => logger.error(connectionFailureMsg)
     }
   }
 }

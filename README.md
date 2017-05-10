@@ -1,6 +1,22 @@
-[![Build Status](https://travis-ci.com/flygare/QvantelDBConnector.svg?token=B6YLB31LLNNKsSzKXpCe&branch=master)](https://travis-ci.com/flygare/QvantelDBConnector)
+[![Build Status](https://travis-ci.org/flygare/orcd-dbconnector.svg?branch=master)](https://travis-ci.org/flygare/orcd-dbconnector)
+[![codecov](https://codecov.io/gh/flygare/orcd-dbconnector/branch/master/graph/badge.svg)](https://codecov.io/gh/flygare/orcd-dbconnector)
 
-# DBConnector 
+# DBConnector
+## Description
+This program is used to fetch data from Cassandra using Spark Cassandra Connector and sending it to Graphite over TCP.
+
+## Changing configuration
+The application configuration file can be found at:
+```
+/src/main/resources/application.conf
+```
+You can change settings such as Cassandra IP, batch size and update interval.
+
+## Usage
+Run DBConnector:
+```
+$ sbt run
+```
 
 Run just tests:
 ```

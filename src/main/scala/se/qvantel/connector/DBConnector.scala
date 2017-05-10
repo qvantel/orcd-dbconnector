@@ -5,7 +5,7 @@ import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
 import scala.util.{Failure, Success}
 
 object DBConnector extends CountryCodes with LazyLogging
-  with ProcessingConfig with SyncManager with GraphiteConfig with SparkConnection{
+  with ProcessingConfig with SyncManager with GraphiteConfig with SparkConnection {
 
 
   def main(args: Array[String]): Unit = {

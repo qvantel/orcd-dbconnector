@@ -17,7 +17,7 @@ class ProcessingManager extends SparkConfig with LazyLogging {
 
     // this counter is to limit the numbers of the while loop if integration test is active.
     var counter = 0
-    var maximumProcessingLimit = ConfigFactory.load().getInt("maximumProcessingLimit")
+    val maximumProcessingLimit = config.getInt("processing.maximumProcessingLimit")
 
     while (counter <= maximumProcessingLimit || maximumProcessingLimit == -1) {
 

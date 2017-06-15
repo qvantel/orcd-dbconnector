@@ -1,5 +1,6 @@
 package se.qvantel.connector
 import com.datastax.spark.connector._
+import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
 import se.qvantel.connector.DBConnector._
@@ -15,7 +16,16 @@ class ProcessingManager extends SparkConfig with LazyLogging {
     val cdrSync = context.cassandraTable(keySpace, cdrSyncTable)
     var lastUpdateNs = getLatestSync(cdrSync)
 
-    while (true) {
+    // this counter is to limit the numbers of the while loop if integration test is active.
+    var counter = 0
+    val maximumProcessingLimit = config.getInt("processing.maximumProcessingLimit")
+
+    while (counter <= maximumProcessingLimit || maximumProcessingLimit == -1) {
+
+      if(maximumProcessingLimit != -1) {
+          counter = counter + 1
+        }
+
       // Sleep if lastUpdate was not back-in-time
       val sleepTime = ((lastUpdateNs/1000000L) + updateInterval) - System.currentTimeMillis()
       if (sleepTime >= 0){
@@ -40,7 +50,7 @@ class ProcessingManager extends SparkConfig with LazyLogging {
           val tsNs = row.getLong("created_at")
           val ts = tsNs/1000000000L
           if (tsNs > newestTsNs){
-              newestTsNs = tsNs
+            newestTsNs = tsNs
           }
           val eventDetails = row.getUDTValue("event_details")
           val isRoaming = eventDetails.getBoolean("is_roaming")

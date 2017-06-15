@@ -1,11 +1,12 @@
 package se.qvantel.connector
 
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import property.{CountryCodes, GraphiteConfig, ProcessingConfig}
 import scala.util.{Failure, Success}
 
 object DBConnector extends CountryCodes with LazyLogging
-  with ProcessingConfig with SyncManager with GraphiteConfig {
+  with ProcessingConfig with SyncManager with GraphiteConfig with SparkConnection {
+
 
   def main(args: Array[String]): Unit = {
     // Loads MCC and countries ISO code into a HashMap, variable in CountryCodes

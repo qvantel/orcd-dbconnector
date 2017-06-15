@@ -18,6 +18,7 @@ class DatapointDispatcher extends LazyLogging with DispatcherConfig with Graphit
   type CdrCount = Int
   type Destination = String
   // A map, pointing a destination to an integer. Call append to increment the value.
+
   var countedRecords = mutable.HashMap.empty[Destination, CdrCount]
 
   def disableAutoSend(): Unit = autoSend = false

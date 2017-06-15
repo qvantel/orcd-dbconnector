@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/flygare/orcd-dbconnector.svg?branch=master)](https://travis-ci.org/flygare/orcd-dbconnector)
-[![codecov](https://codecov.io/gh/flygare/orcd-dbconnector/branch/master/graph/badge.svg)](https://codecov.io/gh/flygare/orcd-dbconnector)
+[![Build Status](https://travis-ci.org/qvantel/orcd-dbconnector.svg?branch=master)](https://travis-ci.org/qvantel/orcd-dbconnector)
+[![codecov](https://codecov.io/gh/qvantel/orcd-dbconnector/branch/master/graph/badge.svg)](https://codecov.io/gh/qvantel/orcd-dbconnector)
 
 # DBConnector
 ## Description
